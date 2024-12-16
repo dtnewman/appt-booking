@@ -117,6 +117,68 @@ export async function POST(req: Request) {
 
       const slots = await getAvailableSlots(params);
 
+      // Handle empty slots case
+      if (!slots || slots.length === 0) {
+        // Ask LLM for alternative suggestions
+        const alternativeSuggestionSchema = z.object({
+          message: z.string(),
+          alternativeQuery: z.object({
+            startDate: z.string().nullable(),
+            endDate: z.string().nullable(),
+            startTime: z.string().nullable(),
+            endTime: z.string().nullable()
+          })
+        });
+
+        const alternativeSuggestion = await openai.chat.completions.create({
+          messages: [
+            {
+              role: 'system',
+              content: `No slots were found for the following parameters:
+              Start Date: ${params.startDate}
+              End Date: ${params.endDate || 'Not specified'}
+              Start Time: ${params.startTime || 'Not specified'}
+              End Time: ${params.endTime || 'Not specified'}
+
+              Please suggest an alternative time frame to check for availability. Return a JSON response with:
+              1. A friendly message explaining that no slots are available and suggesting alternatives
+              2. Alternative parameters to check
+
+              Format your response as:
+              {
+                "message": "Your friendly message here",
+                "alternativeQuery": {
+                  "startDate": "YYYY-MM-DD" or null,
+                  "endDate": "YYYY-MM-DD" or null,
+                  "startTime": "HH:mm" or null,
+                  "endTime": "HH:mm" or null
+                }
+              }`
+            },
+            ...filteredMessages
+          ],
+          model: 'gpt-4o',
+          response_format: zodResponseFormat(alternativeSuggestionSchema, 'alternative_suggestion'),
+          temperature: 0.7,
+        });
+
+        const suggestion = JSON.parse(alternativeSuggestion.choices[0].message.content || '');
+
+        // If alternative parameters are provided, recursively check for slots
+        if (suggestion.alternativeQuery.startDate) {
+          const newSlots = await getAvailableSlots(suggestion.alternativeQuery);
+          return NextResponse.json({
+            message: suggestion.message,
+            availableSlots: newSlots
+          });
+        }
+
+        // If no alternative parameters, just return the message
+        return NextResponse.json({
+          message: suggestion.message
+        });
+      }
+
       console.log("Slots (LLM Input):", slots);
 
       const formattedResponseSchema = z.object({
