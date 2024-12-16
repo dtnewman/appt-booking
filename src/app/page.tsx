@@ -178,7 +178,7 @@ export default function Home() {
                       variant={message.role === "user" ? "sent" : "received"}
                     >
                       <ChatBubbleAvatar
-                        src="/favicon-32x32.png"
+                        src={message.role === "user" ? "" : "/favicon-32x32.png"}
                         fallback={message.role === "user" ? "👨🏽" : ""}
                       />
                       <ChatBubbleMessage>

@@ -23,11 +23,11 @@ async function main() {
 }
 
 function generateAvailabilityForNextFourWeeks() {
-    const slots = [];
+    const slots = new Set();
     const today = startOfToday();
 
-    // Generate slots for the next 28 days
-    for (let i = 0; i < 28; i++) {
+    // Generate slots for the next 12 weeks
+    for (let i = 0; i < (7 * 12); i++) {
         const currentDate = addDays(today, i);
         const dayOfWeek = currentDate.getDay();
 
@@ -36,29 +36,41 @@ function generateAvailabilityForNextFourWeeks() {
 
         // Randomly decide if there's availability on this day (50% chance)
         if (Math.random() < 0.5) {
+            // Create an array of possible start hours (8 AM to 6 PM)
+            const possibleHours = Array.from({ length: 10 }, (_, i) => i + 8);
+            // Shuffle the hours array
+            const shuffledHours = possibleHours.sort(() => Math.random() - 0.5);
+
             // Generate 1-4 slots for this day
             const numberOfSlots = 1 + Math.floor(Math.random() * 4);
 
-            for (let slot = 0; slot < numberOfSlots; slot++) {
-                // Random start time between 8 AM and 6 PM
-                const startHour = 8 + Math.floor(Math.random() * 10);
+            for (let slot = 0; slot < numberOfSlots && shuffledHours.length > 0; slot++) {
+                // Take the next available hour from our shuffled array
+                const startHour = shuffledHours.pop();
+                if (startHour === undefined) continue;  // Skip if no hours left
+
                 // Random duration between 1 and 3 hours
                 const duration = 1 + Math.floor(Math.random() * 2);
 
                 const startTime = setHours(setMinutes(currentDate, 0), startHour);
                 const endTime = setHours(setMinutes(currentDate, 0), startHour + duration);
 
-                slots.push({
+                // Create a unique identifier for the time slot
+                const timeSlot = {
                     startTime: format(startTime, 'yyyy-MM-dd HH:mm'),
                     endTime: format(endTime, 'yyyy-MM-dd HH:mm'),
                     isAvailable: true,
-                });
+                };
+
+                slots.add(JSON.stringify(timeSlot));
             }
         }
     }
 
-    // Sort slots by startTime to ensure chronological order
-    return slots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    // Convert back to array of objects and sort
+    return Array.from(slots)
+        .map(slot => JSON.parse(slot as string) as { startTime: string; endTime: string; isAvailable: boolean })
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
 }
 
 main()

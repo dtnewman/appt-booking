@@ -51,35 +51,48 @@ export async function POST(req: Request) {
     const lastMessage = filteredMessages[filteredMessages.length - 1];
 
 
+    const currentDate = new Date();
+    const systemPrompt = `You are a scheduling assistant. Today is ${currentDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',  // Add year to the date format
+      month: 'long',
+      day: 'numeric'
+    })} and the current time is ${currentDate.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })}.
+
+    Analyze if the user's message is asking about availability. Consider the full conversation context when interpreting time references.
+    IMPORTANT: When handling relative dates (like "next month" or "next week"), always consider the current year (${currentDate.getFullYear()}) and adjust the year accordingly if the date would fall into the next year.
+
+    Return a JSON response with the following structure:
+    {
+      "isAvailabilityQuery": boolean,
+      "params": {
+        "startDate": "YYYY-MM-DD" | null,
+        "endDate": "YYYY-MM-DD" | null,
+        "startTime": "HH:mm" | null,
+        "endTime": "HH:mm" | null
+      }
+    }
+
+    For example, if today is December 16, 2024, "Do you have any appointments next month?" would return:
+    {
+      "isAvailabilityQuery": true,
+      "params": {
+        "startDate": "2025-01-01",
+        "endDate": "2025-01-31",
+        "startTime": null,
+        "endTime": null
+      }
+    }`
+
     const availabilityCheck = await openai.chat.completions.create({
       messages: [
         {
           role: 'system',
-          content: `You are a scheduling assistant. Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}, ${new Date().toISOString().split('T')[0]} and the current time is ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}.
-
-          Analyze if the user's message is asking about availability. Consider the full conversation context when interpreting time references.
-
-          Return a JSON response with the following structure:
-          {
-            "isAvailabilityQuery": boolean,
-            "params": {
-              "startDate": "YYYY-MM-DD" | null,
-              "endDate": "YYYY-MM-DD" | null,
-              "startTime": "HH:mm" | null,
-              "endTime": "HH:mm" | null
-            }
-          }
-          
-          For example, "Do you have any appointments next week?" would return:
-          {
-            "isAvailabilityQuery": true,
-            "params": {
-              "startDate": "2024-01-22",
-              "endDate": "2024-01-29",
-              "startTime": null,
-              "endTime": null
-            }
-          }`
+          content: systemPrompt
         },
         ...filteredMessages.slice(0, -1),
         lastMessage
@@ -199,9 +212,16 @@ export async function POST(req: Request) {
             content: `Here are the available slots:\n${slots.map(slot =>
               `${new Date(slot.startTime).toLocaleDateString()} at ${new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (Provider: ${slot.providerId})`
             ).join('\n')}\n\nPlease analyze these slots and return a JSON response with:
-            1. A friendly message explaining the availability
-            2. A curated list of recommended slots that best match the user's request
-            
+            1. A friendly message explaining the availability. 
+            2. A curated list of recommended slots that best match the user's request. Show up to 8 available slots.
+            3. Remind the user they can click the time slots shown below the chat to book.
+            4. If the user has not specified a time, show the next (up to) 8 available slots.
+            5. If the user has specified a time, show the next (up to) 8 available slots that match the user's request.
+            6. Ultimately, use your best judgement to determine the best slots to show the user. For example, if the user says
+            that they prefer a morning slot, then prefer to show morning slots.
+            7. Don't say things like "Here are the available slots". Say something like "Here are some available slots" instead, 
+            or "Here are some available times" instead, because you may not be showing all the available slots.
+
             Format your response as:
             {
               "message": "Your friendly message here",
