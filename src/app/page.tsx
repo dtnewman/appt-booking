@@ -24,10 +24,12 @@ import CodeDisplayBlock from "@/components/code-display-block";
 import { openai, type Message } from '@/lib/openai';
 import { Schedule } from "@/components/schedule";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BookingDialog } from "@/components/booking-dialog";
 
 
 
 interface AvailableSlot {
+  id: string;
   startTime: Date;
   endTime: Date;
   providerId: string;
@@ -61,7 +63,7 @@ export default function Home() {
     {
       id: 'welcome-1',
       role: 'assistant',
-      content: "Hi! I'm here to help you schedule an appointment with Drillbit. Just let me know what day or time works best for you, and I'll show you the available slots. When you see slots that work for you, you can click them below our chat to book."
+      content: "Hi! I'm here to help you schedule an appointment with us. Just let me know what day or time works best for you, and I'll show you the available slots. When you see slots that work for you, you can click them below our chat to book."
     }
   ]);
   const [input, setInput] = useState('');
@@ -71,6 +73,8 @@ export default function Home() {
   const formRef = useRef<HTMLFormElement>(null);
 
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
+  const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
 
   useEffect(() => {
     if (messagesRef.current) {
@@ -136,17 +140,50 @@ export default function Home() {
     }
   };
 
-  const handleActionClick = async (action: string, messageIndex: number) => {
-    if (action === "Copy") {
-      const message = messages[messageIndex];
-      if (message && message.role === "assistant") {
-        navigator.clipboard.writeText(message.content);
-      }
-    }
-  };
 
   const handleSlotClick = async (slot: AvailableSlot) => {
-    console.log('Slot selected:', slot);
+    setSelectedSlot(slot);
+    setIsBookingDialogOpen(true);
+  };
+
+  const handleBookingConfirm = async (name: string, email: string) => {
+    if (!selectedSlot) return;
+
+    const response = await fetch('/api/appointments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        slotId: selectedSlot.id,
+        clientName: name,
+        clientEmail: email,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to book appointment');
+    }
+
+    // Add confirmation message to chat
+    const confirmationMessage: Message = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `Great! I've confirmed your appointment for ${new Date(selectedSlot.startTime).toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}. A confirmation email will be sent to ${email}. Looking forward to seeing you!`
+    };
+    setMessages(prev => [...prev, confirmationMessage]);
+
+    // Clear the booking interface
+    setAvailableSlots([]);
+    setSelectedSlot(null);
+    setIsBookingDialogOpen(false);
   };
 
   return (
@@ -189,7 +226,7 @@ export default function Home() {
             {/* Available Slots Section */}
             {availableSlots.length > 0 && (
               <div className="py-4 border-t">
-                <h3 className="text-sm font-medium mb-2">Book an appointment</h3>
+                <h3 className="text-sm font-medium mb-2">Available Slots</h3>
                 <div className="flex flex-wrap gap-2">
                   {availableSlots.map((slot, index) => (
                     <button
@@ -207,6 +244,7 @@ export default function Home() {
                         month: 'short',
                         day: 'numeric'
                       })}
+                      {slot.id}
                     </button>
                   ))}
                 </div>
@@ -255,6 +293,15 @@ export default function Home() {
 
       {/* Schedule Section */}
       <Schedule />
+
+      {selectedSlot && (
+        <BookingDialog
+          isOpen={isBookingDialogOpen}
+          onClose={() => setIsBookingDialogOpen(false)}
+          onConfirm={handleBookingConfirm}
+          slot={selectedSlot}
+        />
+      )}
     </main>
   );
 }

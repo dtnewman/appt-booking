@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getAvailableSlots, createAppointment, GetAvailableSlotsParams } from '@/lib/scheduling';
 import { format } from 'date-fns';
+import { PrismaClient } from '@prisma/client';
 
+const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -39,14 +41,51 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        const { providerId, clientName, clientEmail, startTime } = await request.json();
+        const { slotId, clientName, clientEmail } = await request.json();
 
-        const appointment = await createAppointment(
-            providerId,
-            clientName,
-            clientEmail,
-            format(new Date(startTime), 'yyyy-MM-dd HH:mm:ss')
-        );
+        // Get the slot first to verify it exists and is available
+        const slot = await prisma.slot.findUnique({
+            where: { id: slotId },
+            include: { provider: true }
+        });
+
+        if (!slot) {
+            return NextResponse.json(
+                { error: 'Slot not found' },
+                { status: 404 }
+            );
+        }
+
+        if (!slot.isAvailable || slot.appointmentId) {
+            return NextResponse.json(
+                { error: 'Slot is not available' },
+                { status: 400 }
+            );
+        }
+
+        // Create the appointment and update the slot in a transaction
+        const appointment = await prisma.$transaction(async (tx) => {
+            const appointment = await tx.appointment.create({
+                data: {
+                    providerId: slot.providerId,
+                    clientName,
+                    clientEmail,
+                    startTime: slot.startTime,
+                    endTime: slot.endTime,
+                }
+            });
+
+            // Update the slot to mark it as unavailable
+            await tx.slot.update({
+                where: { id: slotId },
+                data: {
+                    isAvailable: false,
+                    appointmentId: appointment.id
+                }
+            });
+
+            return appointment;
+        });
 
         return NextResponse.json(appointment);
     } catch (error) {
