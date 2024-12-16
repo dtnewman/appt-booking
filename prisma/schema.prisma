@@ -1,0 +1,50 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Provider {
+  id           String         @id @default(cuid())
+  name         String
+  slots        Slot[]
+  appointments Appointment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Slot {
+  id            String         @id @default(cuid())
+  providerId    String
+  provider      Provider       @relation(fields: [providerId], references: [id])
+  startTime     DateTime
+  endTime       DateTime
+  isAvailable   Boolean       @default(true)
+  appointmentId String?       // Make it optional since not all slots will have appointments
+  appointment   Appointment?  @relation(fields: [appointmentId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Appointment {
+  id           String            @id @default(cuid())
+  providerId   String
+  provider     Provider          @relation(fields: [providerId], references: [id])
+  slots        Slot[]           // An appointment can span multiple slots
+  clientName   String
+  clientEmail  String
+  startTime    DateTime
+  endTime      DateTime
+  status       AppointmentStatus @default(SCHEDULED)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CANCELLED
+  COMPLETED
+}
