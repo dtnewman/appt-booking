@@ -41,11 +41,30 @@ const ChatAiIcons = [
 ];
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([{
-    id: 'system-1',
-    role: 'system',
-    content: 'You are a helpful AI assistant. You provide clear, concise, and accurate responses.',
-  }]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 'system-1',
+      role: 'system',
+      content: `You are an AI appointment scheduling assistant. Your primary function is to help users schedule appointments.
+      - Only respond to queries about availability and booking appointments
+      - For other queries, politely explain that you can only help with appointment scheduling
+      - When discussing availability, use the /api/appointments endpoint to check available slots
+      - When a user wants to book, collect their name and email
+      - Keep responses concise and focused on scheduling
+      - Format dates in a clear, readable way
+      - Today's date is ${new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })}`
+    },
+    {
+      id: 'welcome-1',
+      role: 'assistant',
+      content: "Hi! I'm here to help you book an appointment with Drillbit. Would you like to schedule something?"
+    }
+  ]);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -120,12 +139,12 @@ export default function Home() {
   };
 
   return (
-    <main className="flex flex-col items-center w-full max-w-6xl mx-auto py-6 px-4 gap-8">
+    <main className="flex flex-col items-center w-full max-w-6xl mx-auto py-6 px-4 gap-12">
       {/* Chat Section */}
-      <div className="w-full h-[500px] flex flex-col">
-        <Card className="flex-1 flex flex-col">
-          <CardContent className="flex-1 flex flex-col p-4">
-            <ChatMessageList ref={messagesRef} className="flex-1">
+      <div className="w-full h-[600px] flex flex-col overflow-hidden">
+        <Card className="flex-1 flex flex-col overflow-hidden">
+          <CardContent className="flex-1 flex flex-col p-4 overflow-hidden">
+            <ChatMessageList ref={messagesRef} className="flex-1 overflow-y-auto">
               {/* Initial Message */}
               {messages.length === 0 && (
                 <div className="w-full bg-background shadow-sm border rounded-lg p-8 flex flex-col gap-2">
@@ -182,59 +201,61 @@ export default function Home() {
               {/* Messages */}
               {messages &&
                 messages.map((message, index) => (
-                  <ChatBubble
-                    key={index}
-                    variant={message.role == "user" ? "sent" : "received"}
-                  >
-                    <ChatBubbleAvatar
-                      src="/favicon-32x32.png"
-                      fallback={message.role == "user" ? "👨🏽" : ""}
-                    />
-                    <ChatBubbleMessage
+                  message.role !== 'system' && (
+                    <ChatBubble
+                      key={index}
+                      variant={message.role == "user" ? "sent" : "received"}
                     >
-                      {message.content
-                        .split("```")
-                        .map((part: string, index: number) => {
-                          if (index % 2 === 0) {
-                            return (
-                              <Markdown key={index} remarkPlugins={[remarkGfm]}>
-                                {part}
-                              </Markdown>
-                            );
-                          } else {
-                            return (
-                              <pre className="whitespace-pre-wrap pt-2" key={index}>
-                                <CodeDisplayBlock code={part} lang="" />
-                              </pre>
-                            );
-                          }
-                        })}
+                      <ChatBubbleAvatar
+                        src="/favicon-32x32.png"
+                        fallback={message.role == "user" ? "👨🏽" : ""}
+                      />
+                      <ChatBubbleMessage
+                      >
+                        {message.content
+                          .split("```")
+                          .map((part: string, index: number) => {
+                            if (index % 2 === 0) {
+                              return (
+                                <Markdown key={index} remarkPlugins={[remarkGfm]}>
+                                  {part}
+                                </Markdown>
+                              );
+                            } else {
+                              return (
+                                <pre className="whitespace-pre-wrap pt-2" key={index}>
+                                  <CodeDisplayBlock code={part} lang="" />
+                                </pre>
+                              );
+                            }
+                          })}
 
-                      {message.role === "assistant" &&
-                        messages.length - 1 === index && (
-                          <div className="flex items-center mt-1.5 gap-1">
-                            {!isGenerating && (
-                              <>
-                                {ChatAiIcons.map((icon, iconIndex) => {
-                                  const Icon = icon.icon;
-                                  return (
-                                    <ChatBubbleAction
-                                      variant="outline"
-                                      className="size-5"
-                                      key={iconIndex}
-                                      icon={<Icon className="size-3" />}
-                                      onClick={() =>
-                                        handleActionClick(icon.label, index)
-                                      }
-                                    />
-                                  );
-                                })}
-                              </>
-                            )}
-                          </div>
-                        )}
-                    </ChatBubbleMessage>
-                  </ChatBubble>
+                        {message.role === "assistant" &&
+                          messages.length - 1 === index && (
+                            <div className="flex items-center mt-1.5 gap-1">
+                              {!isGenerating && (
+                                <>
+                                  {ChatAiIcons.map((icon, iconIndex) => {
+                                    const Icon = icon.icon;
+                                    return (
+                                      <ChatBubbleAction
+                                        variant="outline"
+                                        className="size-5"
+                                        key={iconIndex}
+                                        icon={<Icon className="size-3" />}
+                                        onClick={() =>
+                                          handleActionClick(icon.label, index)
+                                        }
+                                      />
+                                    );
+                                  })}
+                                </>
+                              )}
+                            </div>
+                          )}
+                      </ChatBubbleMessage>
+                    </ChatBubble>
+                  )
                 ))}
 
               {/* Loading */}
