@@ -3,8 +3,8 @@ import { addDays, setHours, setMinutes, startOfDay, endOfDay } from 'date-fns';
 
 export interface GetAvailableSlotsParams {
     providerId?: string;
-    startDate?: Date;
-    endDate?: Date;
+    startDate?: string; // Format: "YYYY-MM-DD"
+    endDate?: string;   // Format: "YYYY-MM-DD"
     startTime?: string; // Format: "HH:mm"
     endTime?: string;   // Format: "HH:mm"
 }
@@ -27,13 +27,15 @@ export async function getAvailableSlots({
     }
 
     // Handle date range filtering
+
+
     if (startDate || endDate) {
         where.startTime = {};
         if (startDate) {
-            where.startTime.gte = startOfDay(startDate);
+            where.startTime.gte = new Date(startDate + 'T00:00:00.000Z');
         }
         if (endDate) {
-            where.startTime.lte = endOfDay(endDate);
+            where.startTime.lte = new Date(endDate + 'T23:59:59.999Z');
         }
     }
 

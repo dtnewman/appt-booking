@@ -17,11 +17,11 @@ export async function GET(request: Request) {
     }
 
     if (startDate) {
-        params.startDate = new Date(startDate);
+        params.startDate = startDate.split('T')[0];
     }
 
     if (endDate) {
-        params.endDate = new Date(endDate);
+        params.endDate = endDate.split('T')[0];
     }
 
     if (startTime) {

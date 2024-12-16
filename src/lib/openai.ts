@@ -1,12 +1,18 @@
 import OpenAI from 'openai';
 
 export const openai = new OpenAI({
-    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true // Only if you're calling OpenAI directly from the browser
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY
 });
 
-export type Message = {
+export interface Message {
     id: string;
-    role: 'user' | 'assistant' | 'system';
+    role: 'system' | 'user' | 'assistant' | 'slots';
     content: string;
-}; 
+    slots?: AvailableSlot[];
+}
+
+interface AvailableSlot {
+    startTime: Date;
+    endTime: Date;
+    providerId: string;
+} 

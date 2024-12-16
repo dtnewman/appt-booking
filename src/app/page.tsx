@@ -40,6 +40,17 @@ const ChatAiIcons = [
   },
 ];
 
+interface AvailableSlot {
+  startTime: Date;
+  endTime: Date;
+  providerId: string;
+}
+
+interface ChatResponse {
+  message: string;
+  availableSlots?: AvailableSlot[];
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -107,13 +118,22 @@ export default function Home() {
         }),
       });
 
-      const assistantMessage = await response.json();
+      const chatResponse: ChatResponse = await response.json();
 
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant',
-        content: assistantMessage.content
+        content: chatResponse.message
       }]);
+
+      if (chatResponse.availableSlots && chatResponse.availableSlots.length > 0) {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'slots',
+          content: '',
+          slots: chatResponse.availableSlots
+        }]);
+      }
     } catch (error) {
       console.error('Error calling chat API:', error);
     } finally {
@@ -138,6 +158,35 @@ export default function Home() {
     }
   };
 
+  const AvailableSlots: React.FC<{ slots: AvailableSlot[] }> = ({ slots }) => {
+    const handleSlotClick = async (slot: AvailableSlot) => {
+      console.log('Slot selected:', slot);
+    };
+
+    return (
+      <div className="flex flex-wrap gap-2 mt-2">
+        {slots.map((slot, index) => (
+          <button
+            key={index}
+            onClick={() => handleSlotClick(slot)}
+            className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
+          >
+            {new Date(slot.startTime).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            })}
+            {' '}
+            {new Date(slot.startTime).toLocaleDateString([], {
+              month: 'short',
+              day: 'numeric'
+            })}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <main className="flex flex-col items-center w-full max-w-6xl mx-auto py-6 px-4 gap-12">
       {/* Chat Section */}
@@ -145,90 +194,40 @@ export default function Home() {
         <Card className="flex-1 flex flex-col overflow-hidden">
           <CardContent className="flex-1 flex flex-col p-4 overflow-hidden">
             <ChatMessageList ref={messagesRef} className="flex-1 overflow-y-auto">
-              {/* Initial Message */}
-              {messages.length === 0 && (
-                <div className="w-full bg-background shadow-sm border rounded-lg p-8 flex flex-col gap-2">
-                  <h1 className="font-bold">Welcome to this example app.</h1>
-                  <p className="text-muted-foreground text-sm">
-                    This is a simple Next.JS example application created using{" "}
-                    <a
-                      href="https://github.com/jakobhoeg/shadcn-chat"
-                      className="font-bold inline-flex flex-1 justify-center gap-1 leading-4 hover:underline"
-                    >
-                      shadcn-chat
-                      <svg
-                        aria-hidden="true"
-                        height="7"
-                        viewBox="0 0 6 6"
-                        width="7"
-                        className="opacity-70"
-                      >
-                        <path
-                          d="M1.25215 5.54731L0.622742 4.9179L3.78169 1.75597H1.3834L1.38936 0.890915H5.27615V4.78069H4.40513L4.41109 2.38538L1.25215 5.54731Z"
-                          fill="currentColor"
-                        ></path>
-                      </svg>
-                    </a>{" "}
-                    components. It uses{" "}
-                    <a
-                      href="https://sdk.vercel.ai/"
-                      className="font-bold inline-flex flex-1 justify-center gap-1 leading-4 hover:underline"
-                    >
-                      Vercel AI SDK
-                      <svg
-                        aria-hidden="true"
-                        height="7"
-                        viewBox="0 0 6 6"
-                        width="7"
-                        className="opacity-70"
-                      >
-                        <path
-                          d="M1.25215 5.54731L0.622742 4.9179L3.78169 1.75597H1.3834L1.38936 0.890915H5.27615V4.78069H4.40513L4.41109 2.38538L1.25215 5.54731Z"
-                          fill="currentColor"
-                        ></path>
-                      </svg>
-                    </a>{" "}
-                    for the AI integration. Build chat interfaces like this at
-                    lightspeed with shadcn-chat.
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    Make sure to also checkout the shadcn-chat support component at
-                    the bottom right corner.
-                  </p>
-                </div>
-              )}
-
               {/* Messages */}
               {messages &&
                 messages.map((message, index) => (
                   message.role !== 'system' && (
                     <ChatBubble
                       key={index}
-                      variant={message.role == "user" ? "sent" : "received"}
+                      variant={message.role === "user" ? "sent" : "received"}
                     >
                       <ChatBubbleAvatar
                         src="/favicon-32x32.png"
-                        fallback={message.role == "user" ? "👨🏽" : ""}
+                        fallback={message.role === "user" ? "👨🏽" : ""}
                       />
-                      <ChatBubbleMessage
-                      >
-                        {message.content
-                          .split("```")
-                          .map((part: string, index: number) => {
-                            if (index % 2 === 0) {
-                              return (
-                                <Markdown key={index} remarkPlugins={[remarkGfm]}>
-                                  {part}
-                                </Markdown>
-                              );
-                            } else {
-                              return (
-                                <pre className="whitespace-pre-wrap pt-2" key={index}>
-                                  <CodeDisplayBlock code={part} lang="" />
-                                </pre>
-                              );
-                            }
-                          })}
+                      <ChatBubbleMessage>
+                        {message.role === 'slots' && message.slots ? (
+                          <AvailableSlots slots={message.slots} />
+                        ) : (
+                          message.content && message.content
+                            .split("```")
+                            .map((part: string, index: number) => {
+                              if (index % 2 === 0) {
+                                return (
+                                  <Markdown key={index} remarkPlugins={[remarkGfm]}>
+                                    {part}
+                                  </Markdown>
+                                );
+                              } else {
+                                return (
+                                  <pre className="whitespace-pre-wrap pt-2" key={index}>
+                                    <CodeDisplayBlock code={part} lang="" />
+                                  </pre>
+                                );
+                              }
+                            })
+                        )}
 
                         {message.role === "assistant" &&
                           messages.length - 1 === index && (
