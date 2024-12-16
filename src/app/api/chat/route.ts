@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import { getAvailableSlots } from '@/lib/scheduling';
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
-import { startOfDay, endOfDay } from 'date-fns';
+import { startOfDay, endOfDay, parseISO, isBefore } from 'date-fns';
+import { Message } from '@/lib/openai';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -31,7 +32,6 @@ interface ChatResponse {
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
-    const lastMessage = messages[messages.length - 1];
 
     // First, ask OpenAI if this is an availability query and to parse parameters
 
@@ -44,6 +44,12 @@ export async function POST(req: Request) {
         endTime: z.string().nullable()
       })
     });
+
+    console.log("Messages:", messages);
+    // remove any messages that have role "slots"
+    const filteredMessages = messages.filter((message: Message) => message.role !== 'slots');
+    const lastMessage = filteredMessages[filteredMessages.length - 1];
+
 
     const availabilityCheck = await openai.chat.completions.create({
       messages: [
@@ -75,7 +81,7 @@ export async function POST(req: Request) {
             }
           }`
         },
-        ...messages.slice(0, -1),
+        ...filteredMessages.slice(0, -1),
         lastMessage
       ],
       model: 'gpt-4o',
@@ -89,15 +95,19 @@ export async function POST(req: Request) {
 
     if (analysis.isAvailabilityQuery) {
       const params: AvailabilityParams = {};
+      const now = new Date();
+
+      // Always use current date and time as the start
+      params.startDate = now.toISOString().split('T')[0];
 
       if (analysis.params.startDate) {
         params.startDate = analysis.params.startDate;
       }
-      if (analysis.params.endDate) {
-        params.endDate = analysis.params.endDate;
-      }
       if (analysis.params.startTime) {
         params.startTime = analysis.params.startTime;
+      }
+      if (analysis.params.endDate) {
+        params.endDate = analysis.params.endDate;
       }
       if (analysis.params.endTime) {
         params.endTime = analysis.params.endTime;
@@ -119,10 +129,9 @@ export async function POST(req: Request) {
       });
 
 
-
       const completion = await openai.chat.completions.create({
         messages: [
-          ...messages,
+          ...filteredMessages,
           {
             role: 'system',
             content: `Here are the available slots:\n${slots.map(slot =>
@@ -166,7 +175,7 @@ export async function POST(req: Request) {
 
     // For non-availability queries, just get a regular response
     const completion = await openai.chat.completions.create({
-      messages,
+      messages: filteredMessages,
       model: 'gpt-4o',
       temperature: 0.7,
     });

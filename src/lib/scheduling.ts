@@ -1,5 +1,5 @@
 import prisma from './prisma';
-import { addDays, setHours, setMinutes, startOfDay, endOfDay } from 'date-fns';
+import { addDays, setHours, setMinutes, startOfDay, endOfDay, format, parse } from 'date-fns';
 
 export interface GetAvailableSlotsParams {
     providerId?: string;
@@ -16,10 +16,16 @@ export async function getAvailableSlots({
     startTime,
     endTime,
 }: GetAvailableSlotsParams = {}) {
+    // Format current date/time as string for comparison
+    const now = format(new Date(), 'yyyy-MM-dd HH:mm');
+
     // Build the where clause dynamically
     const where: any = {
         isAvailable: true,
         appointmentId: null, // Only get slots without appointments
+        startTime: {
+            gte: now, // Compare with string format
+        },
     };
 
     if (providerId) {
@@ -27,15 +33,15 @@ export async function getAvailableSlots({
     }
 
     // Handle date range filtering
-
-
     if (startDate || endDate) {
-        where.startTime = {};
         if (startDate) {
-            where.startTime.gte = new Date(startDate + 'T00:00:00.000Z');
+            const startDateTime = `${startDate} 00:00`;
+            if (startDateTime > now) {
+                where.startTime.gte = startDateTime;
+            }
         }
         if (endDate) {
-            where.startTime.lte = new Date(endDate + 'T23:59:59.999Z');
+            where.startTime.lte = `${endDate} 23:59`;
         }
     }
 
@@ -53,14 +59,12 @@ export async function getAvailableSlots({
     // Filter by time of day if specified
     if (startTime || endTime) {
         return slots.filter(slot => {
-            const slotHour = slot.startTime.getHours();
-            const slotMinutes = slot.startTime.getMinutes();
-            const slotTimeString = `${slotHour.toString().padStart(2, '0')}:${slotMinutes.toString().padStart(2, '0')}`;
+            const slotTime = format(slot.startTime, 'HH:mm');
 
-            if (startTime && slotTimeString < startTime) {
+            if (startTime && slotTime < startTime) {
                 return false;
             }
-            if (endTime && slotTimeString > endTime) {
+            if (endTime && slotTime > endTime) {
                 return false;
             }
             return true;
@@ -74,9 +78,11 @@ export async function createAppointment(
     providerId: string,
     clientName: string,
     clientEmail: string,
-    startTime: Date
+    startTime: string // Changed to accept string
 ) {
-    const endTime = addDays(startTime, 30);
+    // Calculate end time (30 days after start)
+    const startDate = parse(startTime, 'yyyy-MM-dd HH:mm', new Date());
+    const endTime = format(addDays(startDate, 30), 'yyyy-MM-dd HH:mm');
 
     // Check if slot is available
     const conflictingAppointment = await prisma.appointment.findFirst({

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAvailableSlots, createAppointment, GetAvailableSlotsParams } from '@/lib/scheduling';
+import { format } from 'date-fns';
 
 
 export async function GET(request: Request) {
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
             providerId,
             clientName,
             clientEmail,
-            new Date(startTime)
+            format(new Date(startTime), 'yyyy-MM-dd HH:mm:ss')
         );
 
         return NextResponse.json(appointment);

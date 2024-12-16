@@ -20,10 +20,10 @@ model Slot {
   id            String         @id @default(cuid())
   providerId    String
   provider      Provider       @relation(fields: [providerId], references: [id])
-  startTime     DateTime
-  endTime       DateTime
+  startTime     String         // Format: "YYYY-MM-DD HH:mm"
+  endTime       String         // Format: "YYYY-MM-DD HH:mm"
   isAvailable   Boolean       @default(true)
-  appointmentId String?       // Make it optional since not all slots will have appointments
+  appointmentId String?       
   appointment   Appointment?  @relation(fields: [appointmentId], references: [id])
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -33,11 +33,11 @@ model Appointment {
   id           String            @id @default(cuid())
   providerId   String
   provider     Provider          @relation(fields: [providerId], references: [id])
-  slots        Slot[]           // An appointment can span multiple slots
+  slots        Slot[]           
   clientName   String
   clientEmail  String
-  startTime    DateTime
-  endTime      DateTime
+  startTime    String           // Format: "YYYY-MM-DD HH:mm"
+  endTime      String           // Format: "YYYY-MM-DD HH:mm"
   status       AppointmentStatus @default(SCHEDULED)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt

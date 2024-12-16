@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { setHours, setMinutes, addDays, startOfToday } from 'date-fns';
+import { setHours, setMinutes, addDays, startOfToday, format } from 'date-fns';
 
 const prisma = new PrismaClient();
 
@@ -45,9 +45,12 @@ function generateAvailabilityForNextFourWeeks() {
                 // Random duration between 1 and 3 hours
                 const duration = 1 + Math.floor(Math.random() * 2);
 
+                const startTime = setHours(setMinutes(currentDate, 0), startHour);
+                const endTime = setHours(setMinutes(currentDate, 0), startHour + duration);
+
                 slots.push({
-                    startTime: setHours(setMinutes(currentDate, 0), startHour),
-                    endTime: setHours(setMinutes(currentDate, 0), startHour + duration),
+                    startTime: format(startTime, 'yyyy-MM-dd HH:mm'),
+                    endTime: format(endTime, 'yyyy-MM-dd HH:mm'),
                     isAvailable: true,
                 });
             }
@@ -55,7 +58,7 @@ function generateAvailabilityForNextFourWeeks() {
     }
 
     // Sort slots by startTime to ensure chronological order
-    return slots.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+    return slots.sort((a, b) => a.startTime.localeCompare(b.startTime));
 }
 
 main()
