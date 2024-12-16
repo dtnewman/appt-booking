@@ -60,6 +60,7 @@ export default function Home() {
       - Only respond to queries about availability and booking appointments
       - For other queries, politely explain that you can only help with appointment scheduling
       - When discussing availability, use the /api/appointments endpoint to check available slots
+      - When showing available slots, remind users they can click the time slots shown below the chat to book
       - When a user wants to book, collect their name and email
       - Keep responses concise and focused on scheduling
       - Format dates in a clear, readable way
@@ -73,7 +74,7 @@ export default function Home() {
     {
       id: 'welcome-1',
       role: 'assistant',
-      content: "Hi! I'm here to help you book an appointment with Drillbit. Would you like to schedule something?"
+      content: "Hi! I'm here to help you schedule an appointment with Drillbit. Just let me know what day or time works best for you, and I'll show you the available slots. When you see slots that work for you, you can click them below our chat to book."
     }
   ]);
   const [input, setInput] = useState('');
@@ -81,6 +82,8 @@ export default function Home() {
 
   const messagesRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
 
   useEffect(() => {
     if (messagesRef.current) {
@@ -95,6 +98,8 @@ export default function Home() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!input.trim() || isGenerating) return;
+
+    setAvailableSlots([]);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -127,12 +132,7 @@ export default function Home() {
       }]);
 
       if (chatResponse.availableSlots && chatResponse.availableSlots.length > 0) {
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'slots',
-          content: '',
-          slots: chatResponse.availableSlots
-        }]);
+        setAvailableSlots(chatResponse.availableSlots);
       }
     } catch (error) {
       console.error('Error calling chat API:', error);
@@ -158,39 +158,14 @@ export default function Home() {
     }
   };
 
-  const AvailableSlots: React.FC<{ slots: AvailableSlot[] }> = ({ slots }) => {
-    const handleSlotClick = async (slot: AvailableSlot) => {
-      console.log('Slot selected:', slot);
-    };
-
-    return (
-      <div className="flex flex-wrap gap-2 mt-2">
-        {slots.map((slot, index) => (
-          <button
-            key={index}
-            onClick={() => handleSlotClick(slot)}
-            className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
-          >
-            {new Date(slot.startTime).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true
-            })}
-            {' '}
-            {new Date(slot.startTime).toLocaleDateString([], {
-              month: 'short',
-              day: 'numeric'
-            })}
-          </button>
-        ))}
-      </div>
-    );
+  const handleSlotClick = async (slot: AvailableSlot) => {
+    console.log('Slot selected:', slot);
   };
 
   return (
     <main className="flex flex-col items-center w-full max-w-6xl mx-auto py-6 px-4 gap-12">
       {/* Chat Section */}
-      <div className="w-full h-[600px] flex flex-col overflow-hidden">
+      <div className="w-full h-[900px] flex flex-col overflow-hidden">
         <Card className="flex-1 flex flex-col overflow-hidden">
           <CardContent className="flex-1 flex flex-col p-4 overflow-hidden">
             <ChatMessageList ref={messagesRef} className="flex-1 overflow-y-auto">
@@ -207,28 +182,9 @@ export default function Home() {
                         fallback={message.role === "user" ? "👨🏽" : ""}
                       />
                       <ChatBubbleMessage>
-                        {message.role === 'slots' && message.slots ? (
-                          <AvailableSlots slots={message.slots} />
-                        ) : (
-                          message.content && message.content
-                            .split("```")
-                            .map((part: string, index: number) => {
-                              if (index % 2 === 0) {
-                                return (
-                                  <Markdown key={index} remarkPlugins={[remarkGfm]}>
-                                    {part}
-                                  </Markdown>
-                                );
-                              } else {
-                                return (
-                                  <pre className="whitespace-pre-wrap pt-2" key={index}>
-                                    <CodeDisplayBlock code={part} lang="" />
-                                  </pre>
-                                );
-                              }
-                            })
-                        )}
-
+                        <Markdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </Markdown>
                         {message.role === "assistant" &&
                           messages.length - 1 === index && (
                             <div className="flex items-center mt-1.5 gap-1">
@@ -265,6 +221,34 @@ export default function Home() {
                 </ChatBubble>
               )}
             </ChatMessageList>
+
+            {/* Available Slots Section */}
+            {availableSlots.length > 0 && (
+              <div className="py-4 border-t">
+                <h3 className="text-sm font-medium mb-2">Book an appointment</h3>
+                <div className="flex flex-wrap gap-2">
+                  {availableSlots.map((slot, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSlotClick(slot)}
+                      className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
+                    >
+                      {new Date(slot.startTime).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                      {' '}
+                      {new Date(slot.startTime).toLocaleDateString([], {
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="w-full">
               <form
                 ref={formRef}
