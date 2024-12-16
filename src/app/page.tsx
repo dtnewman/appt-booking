@@ -25,20 +25,7 @@ import { openai, type Message } from '@/lib/openai';
 import { Schedule } from "@/components/schedule";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const ChatAiIcons = [
-  {
-    icon: CopyIcon,
-    label: "Copy",
-  },
-  {
-    icon: RefreshCcw,
-    label: "Refresh",
-  },
-  {
-    icon: Volume2,
-    label: "Volume",
-  },
-];
+
 
 interface AvailableSlot {
   startTime: Date;
@@ -185,29 +172,6 @@ export default function Home() {
                         <Markdown remarkPlugins={[remarkGfm]}>
                           {message.content}
                         </Markdown>
-                        {message.role === "assistant" &&
-                          messages.length - 1 === index && (
-                            <div className="flex items-center mt-1.5 gap-1">
-                              {!isGenerating && (
-                                <>
-                                  {ChatAiIcons.map((icon, iconIndex) => {
-                                    const Icon = icon.icon;
-                                    return (
-                                      <ChatBubbleAction
-                                        variant="outline"
-                                        className="size-5"
-                                        key={iconIndex}
-                                        icon={<Icon className="size-3" />}
-                                        onClick={() =>
-                                          handleActionClick(icon.label, index)
-                                        }
-                                      />
-                                    );
-                                  })}
-                                </>
-                              )}
-                            </div>
-                          )}
                       </ChatBubbleMessage>
                     </ChatBubble>
                   )
