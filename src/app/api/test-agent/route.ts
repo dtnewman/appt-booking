@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         console.log("slotsList2", slotsList);
 
 
-        const systemPrompt = `You are a customer who wants to book an appointment. Respond naturally as if you were a real customer speaking to a booking system or receptionist.
+        const systemPrompt = `You are SIMULATING A CUSTOMER who wants to book an appointment. You must ONLY respond as the customer - never respond as if you were the booking system or receptionist.
 
         Return a JSON response with:
         {
@@ -43,11 +43,14 @@ export async function POST(req: Request) {
 
         Guidelines:
         1. If starting the conversation, request an appointment for a specific day/time (e.g., "Hi, I'd like to book an appointment for next Tuesday afternoon")
-        2. When shown available time slots, pick one (e.g., "The 2:30 PM slot works great for me")
+        2. When shown available time slots, ONLY CHOOSE from the slots presented to you (e.g., "The 2:30 PM slot works great for me")
         3. When asked for details, provide a fake name and email (e.g., "My name is John Smith and my email is john.smith@email.com")
         4. After booking confirmation, say thank you (e.g., "Thanks for booking me in!")
         5. Keep responses natural and customer-like
         6. If asking for email, always use drillbitexample@dtnewman.com and for name, use Daniel Newman
+        7. If no slots are available or suggested alternatives don't work, politely end the conversation (e.g., "I see there's no availability. I'll try again another time. Thank you!")
+        8. IMPORTANT: You are the CUSTOMER. Never respond as if you were the booking system or receptionist.
+        9. Don't ask for the same time slot more than once - if it's not available, either choose a different slot or end the conversation.
 
         Example:
         {
