@@ -16,6 +16,14 @@ const debugLog = (...args: any[]) => {
   }
 };
 
+// Add this helper function at the top level
+const validateSlots = (slots: Array<{ date: string; time: string }>) => {
+  return slots.every(slot =>
+    /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/.test(slot.date) &&
+    /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(slot.time)
+  );
+};
+
 // Interfaces
 interface AvailabilityParams {
   startDate?: string;
@@ -205,47 +213,68 @@ export async function POST(req: Request) {
       debugLog("Slots (LLM Input):", slots);
 
       // Format the available slots using the LLM
-      const completion = await openai.chat.completions.create({
-        messages: [
-          ...filteredMessages,
-          {
-            role: 'system',
-            content: `
-              Here are the available slots:
-              ${slots.map(slot =>
-              `${new Date(slot.startTime).toLocaleDateString()} at ${new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (Provider: ${slot.providerId})`
-            ).join('\n')}
+      let attempts = 0;
+      const MAX_ATTEMPTS = 3;
+      let formattedResult;
 
-              Please analyze these slots and return a JSON response:
-              {
-                "message": "A friendly message",
-                "selectedSlots": [
-                  {
-                    "date": "YYYY-MM-DD",
-                    "time": "HH:mm",
-                    "providerId": "provider_id"
-                  }
-                ]
-              }
+      while (attempts < MAX_ATTEMPTS) {
+        const completion = await openai.chat.completions.create({
+          messages: [
+            ...filteredMessages,
+            {
+              role: 'system',
+              content: `
+                Here are the available slots:
+                ${slots.map(slot =>
+                `${new Date(slot.startTime).toLocaleDateString()} at ${new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (Provider: ${slot.providerId})`
+              ).join('\n')}
 
-              Guidelines:
-              1. Provide a friendly message about the availability.
-              2. Return up to 8 recommended slots that best match the user's request.
-              3. Remind the user they can click the time slots shown below the chat to book or they can ask you to book for them.
-              4. If no specific time requested, show the next (up to) 7 available slots.
-              5. If a time was specified, show up to 8 available slots that match the request.
-              6. Use best judgment to pick appropriate slots (e.g., prefer mornings if user requested morning).
-              7. Avoid saying "Here are the available slots." Instead, say "Here are some available slots" or "Here are some available times".
-              
-            `
-          }
-        ],
-        model: 'gpt-4o',
-        response_format: zodResponseFormat(formattedResponseSchema, 'formatted_response'),
-        temperature: 0.2,
-      });
+                Please analyze these slots and return a JSON response:
+                {
+                  "message": "A friendly message",
+                  "selectedSlots": [
+                    {
+                      "date": "YYYY-MM-DD",  // MUST be in exact YYYY-MM-DD format
+                      "time": "HH:mm",       // MUST be in exact 24-hour HH:mm format
+                      "providerId": "provider_id"
+                    }
+                  ]
+                }
 
-      const formattedResult = JSON.parse(completion.choices[0].message.content || '');
+                IMPORTANT: Dates MUST be in YYYY-MM-DD format (e.g., 2024-03-21)
+                Times MUST be in 24-hour HH:mm format (e.g., 14:30)
+                ${attempts > 0 ? "\nPrevious attempt failed due to invalid date/time format. Please ensure strict format compliance." : ""}
+
+                Guidelines:
+                1. Provide a friendly message about the availability.
+                2. Return up to 8 recommended slots that best match the user's request.
+                3. Remind the user they can click the time slots shown below the chat to book or they can ask you to book for them.
+                4. If no specific time requested, show the next (up to) 7 available slots.
+                5. If a time was specified, show up to 8 available slots that match the request.
+                6. Use best judgment to pick appropriate slots (e.g., prefer mornings if user requested morning).
+                7. Avoid saying "Here are the available slots." Instead, say "Here are some available slots" or "Here are some available times".
+              `
+            }
+          ],
+          model: 'gpt-4o',
+          response_format: zodResponseFormat(formattedResponseSchema, 'formatted_response'),
+          temperature: 0.2,
+        });
+
+        formattedResult = JSON.parse(completion.choices[0].message.content || '');
+
+        if (validateSlots(formattedResult.selectedSlots)) {
+          break;
+        }
+
+        debugLog(`Attempt ${attempts + 1} failed due to invalid date/time format`);
+        attempts++;
+
+        if (attempts === MAX_ATTEMPTS) {
+          throw new Error('Failed to get properly formatted dates after maximum attempts');
+        }
+      }
+
       const response: ChatResponse = {
         message: formattedResult.message,
         availableSlots: formattedResult.selectedSlots.map((slot: { date: string; time: string; providerId: string; }) => ({

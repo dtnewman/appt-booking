@@ -79,16 +79,12 @@ export async function POST(request: Request) {
             );
         }
 
-        console.log("1");
-
         if (!slot) {
             return NextResponse.json(
                 { error: 'No available slot found for the requested time' },
                 { status: 404 }
             );
         }
-
-        console.log("2");
 
         // Create the appointment and update the slot in a transaction
         const appointment = await prisma.$transaction(async (tx) => {
@@ -101,9 +97,6 @@ export async function POST(request: Request) {
                     endTime: slot.endTime,
                 }
             });
-
-            console.log("3");
-            console.log(slotId);
 
             // Update the slot to mark it as unavailable
             await tx.slot.update({
