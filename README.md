@@ -12,7 +12,11 @@ DATABASE_URL=your_database_url
 OPENAI_API_KEY=your_openai_key
 RESEND_API_KEY=your_resend_key
 ```
-4. Run `npm run dev` to run the development server
+
+4. Run `npx prisma generate` to generate the Prisma client
+5. Run `npx prisma migrate deploy` to apply existing migrations
+6. Run `npm run db:seed` to seed the database
+7. Run `npm run dev` to run the development server
 
 
 
