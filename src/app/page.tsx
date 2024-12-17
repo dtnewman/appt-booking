@@ -134,11 +134,8 @@ export default function Home() {
       if (chatResponse.availableSlots && chatResponse.availableSlots.length > 0) {
         const slotsText = chatResponse.availableSlots
           .map((slot: { startTime: string | number | Date; }) => {
-            return `${new Date(slot.startTime).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true
-            })} ${new Date(slot.startTime).toLocaleDateString([], {
+            const date = new Date(slot.startTime);
+            return `${date.getUTCHours().toString().padStart(2, '0')}:${date.getUTCMinutes().toString().padStart(2, '0')} ${date.toLocaleDateString([], {
               month: 'short',
               day: 'numeric',
               weekday: 'short'
@@ -438,11 +435,7 @@ export default function Home() {
                                   onClick={() => handleSlotClick(slot)}
                                   className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
                                 >
-                                  {new Date(slot.startTime).toLocaleTimeString([], {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: true
-                                  })}
+                                  {`${new Date(slot.startTime).getUTCHours().toString().padStart(2, '0')}:${new Date(slot.startTime).getUTCMinutes().toString().padStart(2, '0')}`}
                                   {' '}
                                   {new Date(slot.startTime).toLocaleDateString([], {
                                     month: 'short',
