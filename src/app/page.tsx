@@ -134,9 +134,14 @@ export default function Home() {
       if (chatResponse.availableSlots && chatResponse.availableSlots.length > 0) {
         const slotsText = chatResponse.availableSlots
           .map((slot: { startTime: string }) => {
-            const [date, time] = slot.startTime.split(' ');
-            const [hours, minutes] = time.split(':');
-            return `${hours}:${minutes} ${new Date(date).toLocaleDateString([], {
+            const [date, time] = slot.startTime.split('T');
+            const timeOnly = time.substring(0, 5);
+            const [hours, minutes] = timeOnly.split(':');
+            const hour = parseInt(hours, 10);
+            const ampm = hour >= 12 ? 'pm' : 'am';
+            const hour12 = hour % 12 || 12;
+            const formattedTime = `${hour12}${minutes === '00' ? '' : ':' + minutes}${ampm}`;
+            return `${formattedTime} ${new Date(date).toLocaleDateString([], {
               month: 'short',
               day: 'numeric',
               weekday: 'short'
