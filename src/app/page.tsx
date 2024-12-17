@@ -70,9 +70,9 @@ export default function Home() {
   const formRef = useRef<HTMLFormElement>(null);
 
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [showAvailableSlots, setShowAvailableSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
-  const [isAgentActive, setIsAgentActive] = useState(false);
   const [agentThinking, setAgentThinking] = useState(false);
   const shouldStopAgentRef = useRef(false);
 
@@ -90,8 +90,7 @@ export default function Home() {
     e.preventDefault();
     if (!input.trim() || isGenerating) return;
 
-    setAvailableSlots([]);
-
+    setShowAvailableSlots(false);
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -124,6 +123,7 @@ export default function Home() {
 
       if (chatResponse.availableSlots && chatResponse.availableSlots.length > 0) {
         setAvailableSlots(chatResponse.availableSlots);
+        setShowAvailableSlots(true);
       }
     } catch (error) {
       console.error('Error calling chat API:', error);
@@ -198,13 +198,25 @@ export default function Home() {
 
     try {
       let isConversationComplete = false;
+      let currentMessages = messages;
+      let currentSlots = availableSlots;
 
       while (!isConversationComplete && !shouldStopAgentRef.current) {
+        console.log("availableSlots", availableSlots);
+        const slotsList = currentSlots.map(slot => new Date(slot.startTime).toLocaleString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }));
+
         const response = await fetch('/api/test-agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            currentMessages: messages
+            currentMessages: currentMessages,
+            slotsList: slotsList
           }),
         });
 
@@ -217,14 +229,14 @@ export default function Home() {
             content: data.message
           };
 
-          setMessages(prev => [...prev, agentMessage]);
+          currentMessages = [...currentMessages, agentMessage];
+          setMessages(currentMessages);
 
-          // Get the chat response
           const chatResponse = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              messages: messages.concat(agentMessage).map(({ role, content }) => ({
+              messages: currentMessages.map(({ role, content }) => ({
                 role,
                 content,
               })),
@@ -233,15 +245,21 @@ export default function Home() {
 
           const chatData = await chatResponse.json();
 
-          setMessages(prev => [...prev, {
+          if (chatData.availableSlots && chatData.availableSlots.length > 0) {
+            currentSlots = chatData.availableSlots;
+            setAvailableSlots(chatData.availableSlots);
+            console.log("chatData.availableSlots", chatData.availableSlots);
+            setShowAvailableSlots(true);
+          }
+
+          const assistantMessage: Message = {
             id: Date.now().toString(),
             role: 'assistant',
             content: chatData.message
-          }]);
+          };
 
-          if (chatData.availableSlots && chatData.availableSlots.length > 0) {
-            setAvailableSlots(chatData.availableSlots);
-          }
+          currentMessages = [...currentMessages, assistantMessage];
+          setMessages(currentMessages);
 
           isConversationComplete = data.isConversationComplete;
 
@@ -298,7 +316,7 @@ export default function Home() {
             </ChatMessageList>
 
             {/* Available Slots Section */}
-            {availableSlots.length > 0 && (
+            {availableSlots.length > 0 && showAvailableSlots && (
               <div className="py-4 border-t">
                 <h3 className="text-sm font-medium mb-2">Available Slots</h3>
                 <div className="flex flex-wrap gap-2">

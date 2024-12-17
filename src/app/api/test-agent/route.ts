@@ -22,14 +22,16 @@ const debugLog = (...args: any[]) => {
 
 export async function POST(req: Request) {
     try {
-        const { currentMessages } = await req.json();
-        debugLog("Current Messages:", currentMessages);
+        const { currentMessages, slotsList } = await req.json();
 
-        const systemPrompt = `You are a customer trying to book an appointment. Analyze the conversation and respond appropriately.
+        console.log("slotsList2", slotsList);
+
+
+        const systemPrompt = `You are a customer who wants to book an appointment. Respond naturally as if you were a real customer speaking to a booking system or receptionist.
 
         Return a JSON response with:
         {
-            "message": "Your natural response as a customer",
+            "message": "Your response as a customer seeking an appointment",
             "isConversationComplete": boolean (true if booking is confirmed and thanked),
             "nextAction": one of:
                 - "ask_availability" (initial query or new time request)
@@ -40,18 +42,29 @@ export async function POST(req: Request) {
         }
 
         Guidelines:
-        1. If no messages exist, ask about availability for a specific time
-        2. When shown slots, express interest in one of them
-        3. When asked for details, provide a fake name and email
-        4. After booking confirmation, express gratitude
-        5. Keep responses conversational and natural
+        1. If starting the conversation, request an appointment for a specific day/time (e.g., "Hi, I'd like to book an appointment for next Tuesday afternoon")
+        2. When shown available time slots, pick one (e.g., "The 2:30 PM slot works great for me")
+        3. When asked for details, provide a fake name and email (e.g., "My name is John Smith and my email is john.smith@email.com")
+        4. After booking confirmation, say thank you (e.g., "Thanks for booking me in!")
+        5. Keep responses natural and customer-like
+        6. If asking for email, always use drillbitexample@dtnewman.com and for name, use Daniel Newman
 
         Example:
         {
-            "message": "I'd like to schedule an appointment for next Tuesday afternoon if possible.",
+            "message": "Hi, I'd like to book an appointment for next Tuesday afternoon if possible.",
             "isConversationComplete": false,
             "nextAction": "ask_availability"
         }`;
+
+        if (slotsList && slotsList.length > 0) {
+            // Add available slots to the conversation context
+            currentMessages.push({
+                role: 'assistant',
+                content: `Here are the available appointment slots:\n${slotsList.join('\n')}\nDo any of these work for you?`
+            });
+        }
+
+        debugLog("Current Messages:", currentMessages);
 
         const completion = await openai.chat.completions.create({
             messages: [
