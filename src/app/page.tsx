@@ -23,7 +23,7 @@ import { Schedule } from "@/components/schedule";
 import { Card, CardContent } from "@/components/ui/card";
 import { BookingDialog } from "@/components/booking-dialog";
 import { BookingConfirmationDialog } from "@/components/booking-confirmation-dialog";
-import { format } from "date-fns";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 
 
@@ -102,7 +102,6 @@ export default function Home() {
     if (!input.trim() || isGenerating) return;
 
     setShowAvailableSlots(false);
-    setAvailableSlots([]);
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -405,6 +404,11 @@ export default function Home() {
 
   return (
     <main className="flex flex-col items-center w-full max-w-6xl mx-auto py-6 px-4 gap-12">
+      {/* Add the theme toggle button */}
+      <div className="w-full flex justify-end">
+        <ThemeToggle />
+      </div>
+
       {/* Chat Section */}
       <div className="w-full h-[900px] flex flex-col overflow-hidden">
         <Card className="flex-1 flex flex-col overflow-hidden">
@@ -516,6 +520,7 @@ export default function Home() {
           className={isTestComplete ? "bg-green-500 hover:bg-green-600" : ""}
         >
           {isTestComplete ? "Test Complete ✓" : testAgentButtonText}
+          <Bot className="ml-2 size-4" />
         </Button>
       )}
       <Schedule />
