@@ -136,7 +136,7 @@ export default function Home() {
         const slotsText = chatResponse.availableSlots
           .map((slot: { startTime: string }) => {
             console.log("slot", slot);
-            const [date, time] = slot.startTime.split('T');
+            const [date, time] = slot.startTime.split(' ');
             const timeOnly = time.substring(0, 5);
             const [hours, minutes] = timeOnly.split(':');
             const hour = parseInt(hours, 10);
@@ -266,13 +266,16 @@ export default function Home() {
         setShowAvailableSlots(false);
         setAvailableSlots([]);
 
-        const slotsList = currentSlots.map(slot => new Date(slot.startTime).toLocaleString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }));
+        const slotsList = currentSlots.map(slot => {
+          const [date, time] = slot.startTime.split(' ');
+          const [hours, minutes] = time.split(':');
+          const slotDate = new Date(date);
+          return `${hours}:${minutes} ${slotDate.toLocaleString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric'
+          })}`;
+        });
 
         const response = await fetch('/api/test-agent', {
           method: 'POST',
@@ -319,7 +322,7 @@ export default function Home() {
           if (chatData.availableSlots && chatData.availableSlots.length > 0) {
             const slotsText = chatData.availableSlots
               .map((slot: { startTime: string }) => {
-                const [date, time] = slot.startTime.split('T');
+                const [date, time] = slot.startTime.split(' ');
                 const timeOnly = time.substring(0, 5);
                 const [hours, minutes] = timeOnly.split(':');
                 const hour = parseInt(hours, 10);
