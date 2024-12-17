@@ -143,7 +143,7 @@ export default function Home() {
             const ampm = hour >= 12 ? 'pm' : 'am';
             const hour12 = hour % 12 || 12;
             const formattedTime = `${hour12}${minutes === '00' ? '' : ':' + minutes}${ampm}`;
-            return `${formattedTime} ${new Date(date).toLocaleDateString([], {
+            return `${formattedTime} ${new Date(date + 'T00:00:00').toLocaleDateString([], {
               month: 'short',
               day: 'numeric',
               weekday: 'short'
@@ -180,14 +180,6 @@ export default function Home() {
 
 
   const handleSlotClick = async (slot: AvailableSlot) => {
-    const slotInfoMessage: Message = {
-      id: 'slots-' + Date.now().toString(),
-      role: 'slots',
-      content: JSON.stringify({
-        availableSlots: availableSlots,
-        selectedSlot: slot
-      })
-    };
 
     const confirmationMessage: Message = {
       id: Date.now().toString(),
@@ -202,7 +194,7 @@ export default function Home() {
       })}. Let's proceed with your booking.`
     };
 
-    setMessages(prev => [...prev, slotInfoMessage, confirmationMessage]);
+    setMessages(prev => [...prev, confirmationMessage]);
 
     setSelectedSlot(slot);
     setIsBookingDialogOpen(true);
@@ -269,7 +261,7 @@ export default function Home() {
         const slotsList = currentSlots.map(slot => {
           const [date, time] = slot.startTime.split(' ');
           const [hours, minutes] = time.split(':');
-          const slotDate = new Date(date);
+          const slotDate = new Date(date + 'T00:00:00');
           return `${hours}:${minutes} ${slotDate.toLocaleString('en-US', {
             weekday: 'long',
             month: 'long',
@@ -329,7 +321,7 @@ export default function Home() {
                 const ampm = hour >= 12 ? 'pm' : 'am';
                 const hour12 = hour % 12 || 12;
                 const formattedTime = `${hour12}${minutes === '00' ? '' : ':' + minutes}${ampm}`;
-                return `${formattedTime} ${new Date(date).toLocaleDateString([], {
+                return `${formattedTime} ${new Date(date + 'T00:00:00').toLocaleDateString([], {
                   month: 'short',
                   day: 'numeric',
                   weekday: 'short'
@@ -454,7 +446,7 @@ export default function Home() {
                                 const [date, time] = slot.startTime.split(' ');
                                 console.log("date", date);
                                 const [hours, minutes] = time.split(':');
-                                const slotDate = new Date(date);
+                                const slotDate = new Date(date + 'T00:00:00');
                                 console.log("slotDate", slotDate);
                                 return (
                                   <button
@@ -462,12 +454,17 @@ export default function Home() {
                                     onClick={() => handleSlotClick(slot)}
                                     className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
                                   >
-                                    {`${hours}:${minutes} ${slotDate.toLocaleDateString([], {
-                                      month: 'short',
-                                      day: 'numeric'
-                                    })} (${slotDate.toLocaleDateString([], {
-                                      weekday: 'short'
-                                    })})`}
+                                    {(() => {
+                                      const hour = parseInt(hours, 10);
+                                      const ampm = hour >= 12 ? 'PM' : 'AM';
+                                      const hour12 = hour % 12 || 12;
+                                      return `${hour12}:${minutes} ${ampm}, ${slotDate.toLocaleDateString([], {
+                                        month: 'short',
+                                        day: 'numeric'
+                                      })} (${slotDate.toLocaleDateString([], {
+                                        weekday: 'short'
+                                      })})`
+                                    })()}
                                   </button>
                                 );
                               })}

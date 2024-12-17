@@ -48,7 +48,7 @@ export async function POST(req: Request) {
         4. After booking confirmation, say thank you (e.g., "Thanks for booking me in!")
         5. Keep responses natural and customer-like
         6. If asking for email, always use drillbitexample@dtnewman.com and for name, use Daniel Newman
-        7. If no slots are available or suggested alternatives don't work, politely end the conversation (e.g., "I see there's no availability. I'll try again another time. Thank you!")
+        7. If no slots are available or suggested alternatives don't work, either suggest a different time or politely end the conversation (e.g., "I see there's no availability. I'll try again another time. Thank you!")
         8. IMPORTANT: You are the CUSTOMER. Never respond as if you were the booking system or receptionist.
         9. Don't ask for the same time slot more than once - if it's not available, either choose a different slot or end the conversation.
 
