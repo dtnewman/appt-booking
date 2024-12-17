@@ -123,6 +123,7 @@ export default function Home() {
       });
 
       const chatResponse = await response.json();
+      console.log("chatResponse", chatResponse);
 
       // Handle booking details if present
       if (chatResponse.bookingDetails) {
@@ -134,6 +135,7 @@ export default function Home() {
       if (chatResponse.availableSlots && chatResponse.availableSlots.length > 0) {
         const slotsText = chatResponse.availableSlots
           .map((slot: { startTime: string }) => {
+            console.log("slot", slot);
             const [date, time] = slot.startTime.split('T');
             const timeOnly = time.substring(0, 5);
             const [hours, minutes] = timeOnly.split(':');
