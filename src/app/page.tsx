@@ -318,12 +318,15 @@ export default function Home() {
           let assistantMessage = chatData.message;
           if (chatData.availableSlots && chatData.availableSlots.length > 0) {
             const slotsText = chatData.availableSlots
-              .map((slot: { startTime: string | number | Date; }) => {
-                return `${new Date(slot.startTime).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true
-                })} ${new Date(slot.startTime).toLocaleDateString([], {
+              .map((slot: { startTime: string }) => {
+                const [date, time] = slot.startTime.split('T');
+                const timeOnly = time.substring(0, 5);
+                const [hours, minutes] = timeOnly.split(':');
+                const hour = parseInt(hours, 10);
+                const ampm = hour >= 12 ? 'pm' : 'am';
+                const hour12 = hour % 12 || 12;
+                const formattedTime = `${hour12}${minutes === '00' ? '' : ':' + minutes}${ampm}`;
+                return `${formattedTime} ${new Date(date).toLocaleDateString([], {
                   month: 'short',
                   day: 'numeric',
                   weekday: 'short'
@@ -444,9 +447,12 @@ export default function Home() {
                           showAvailableSlots && (
                             <div className="mt-4 flex flex-wrap gap-2">
                               {availableSlots.map((slot, idx) => {
+                                console.log("slot", slot);
                                 const [date, time] = slot.startTime.split(' ');
+                                console.log("date", date);
                                 const [hours, minutes] = time.split(':');
                                 const slotDate = new Date(date);
+                                console.log("slotDate", slotDate);
                                 return (
                                   <button
                                     key={idx}
