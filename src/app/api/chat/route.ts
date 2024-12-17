@@ -294,9 +294,17 @@ export async function POST(req: Request) {
         {
           role: 'system',
           content: `
-            You are a scheduling assistant. If the user provides their name and email for booking,
-            DO NOT confirm the booking. Instead, return their details in the bookingDetails field
-            and set isBookingRequest to true. The message should ask them to confirm their booking details.
+            You are a scheduling assistant. IMPORTANT:
+            - You can NEVER confirm or reserve appointments directly
+            - When user provides booking details (name/email), only collect the information
+            - Always make it clear that the booking needs to be confirmed by the user
+            - Never say you've "reserved" or "booked" a slot
+            - Never say a confirmation email will be sent
+            - Instead, ask the user to review and confirm their booking details
+
+            If the user provides their name and email for booking,
+            return their details in the bookingDetails field and set isBookingRequest to true.
+            The message should ask them to confirm their booking details.
           `
         },
         ...filteredMessages

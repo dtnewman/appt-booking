@@ -34,20 +34,6 @@ interface AvailableSlot {
   providerId: string;
 }
 
-interface ChatResponse {
-  message: string;
-  availableSlots?: AvailableSlot[];
-  bookingDetails?: {
-    name: string;
-    email: string;
-    selectedSlot: {
-      date: string;
-      time: string;
-      providerId: string;
-    };
-  };
-}
-
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -98,6 +84,9 @@ export default function Home() {
   } | null>(null);
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false);
 
+  const [isTestComplete, setIsTestComplete] = useState(false);
+  const [showTestButton, setShowTestButton] = useState(true);
+
   useEffect(() => {
     if (messagesRef.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
@@ -113,6 +102,7 @@ export default function Home() {
     if (!input.trim() || isGenerating) return;
 
     setShowAvailableSlots(false);
+    setAvailableSlots([]);
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -122,6 +112,7 @@ export default function Home() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsGenerating(true);
+    setShowTestButton(false);
 
     try {
       const response = await fetch('/api/chat', {
@@ -266,6 +257,7 @@ export default function Home() {
 
     shouldStopAgentRef.current = false;
     setAgentThinking(true);
+    setIsTestComplete(false);
 
     try {
       let isConversationComplete = false;
@@ -273,7 +265,9 @@ export default function Home() {
       let currentSlots = availableSlots;
 
       while (!isConversationComplete && !shouldStopAgentRef.current) {
-        console.log("availableSlots", availableSlots);
+        setShowAvailableSlots(false);
+        setAvailableSlots([]);
+
         const slotsList = currentSlots.map(slot => new Date(slot.startTime).toLocaleString('en-US', {
           weekday: 'long',
           month: 'long',
@@ -316,23 +310,56 @@ export default function Home() {
 
           const chatData = await chatResponse.json();
 
+          // Handle booking details from test agent and stop the agent
+          if (chatData.bookingDetails) {
+            setBookingConfirmationDetails(chatData.bookingDetails);
+            setIsConfirmationDialogOpen(true);
+            break; // Stop the test agent loop
+          }
+
+          let assistantMessage = chatData.message;
           if (chatData.availableSlots && chatData.availableSlots.length > 0) {
+            const slotsText = chatData.availableSlots
+              .map((slot: { startTime: string | number | Date; }) => {
+                return `${new Date(slot.startTime).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true
+                })} ${new Date(slot.startTime).toLocaleDateString([], {
+                  month: 'short',
+                  day: 'numeric',
+                  weekday: 'short'
+                })}`;
+              })
+              .join('\n');
+            assistantMessage += '\n\nAvailable slots:\n' + slotsText;
+
             currentSlots = chatData.availableSlots;
             setAvailableSlots(chatData.availableSlots);
-            console.log("chatData.availableSlots", chatData.availableSlots);
             setShowAvailableSlots(true);
           }
 
-          const assistantMessage: Message = {
+          const assistantMessageObj: Message = {
             id: Date.now().toString(),
             role: 'assistant',
-            content: chatData.message
+            content: assistantMessage
           };
 
-          currentMessages = [...currentMessages, assistantMessage];
+          currentMessages = [...currentMessages, assistantMessageObj];
           setMessages(currentMessages);
 
           isConversationComplete = data.isConversationComplete;
+
+          if (isConversationComplete) {
+            setIsTestComplete(true);
+            const completionMessage: Message = {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: "✨ Test agent workflow completed! You can now interact with the chat normally."
+            };
+            currentMessages = [...currentMessages, completionMessage];
+            setMessages(currentMessages);
+          }
 
           if (!shouldStopAgentRef.current) {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -483,9 +510,14 @@ export default function Home() {
       </div>
 
       {/* Schedule Section */}
-      <Button onClick={handleTestAgent}>
-        {testAgentButtonText}
-      </Button>
+      {showTestButton && (
+        <Button
+          onClick={handleTestAgent}
+          className={isTestComplete ? "bg-green-500 hover:bg-green-600" : ""}
+        >
+          {isTestComplete ? "Test Complete ✓" : testAgentButtonText}
+        </Button>
+      )}
       <Schedule />
 
       {selectedSlot && (
