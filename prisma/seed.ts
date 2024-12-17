@@ -49,11 +49,8 @@ function generateAvailabilityForNextFourWeeks() {
                 const startHour = shuffledHours.pop();
                 if (startHour === undefined) continue;  // Skip if no hours left
 
-                // Random duration between 1 and 3 hours
-                const duration = 1 + Math.floor(Math.random() * 2);
-
                 const startTime = setHours(setMinutes(currentDate, 0), startHour);
-                const endTime = setHours(setMinutes(currentDate, 0), startHour + duration);
+                const endTime = setHours(setMinutes(currentDate, 0), startHour + 1);
 
                 // Create a unique identifier for the time slot
                 const timeSlot = {

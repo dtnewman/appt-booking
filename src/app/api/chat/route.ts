@@ -97,11 +97,13 @@ export async function POST(req: Request) {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Chicago'
     })} and the current time is ${currentDate.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false
+      hour12: false,
+      timeZone: 'America/Chicago'
     })}.
 
       Analyze if the user's message is asking about availability. Consider the full conversation context.
@@ -225,9 +227,10 @@ export async function POST(req: Request) {
               role: 'system',
               content: `
                 Here are the available slots:
-                ${slots.map(slot =>
-                `${new Date(slot.startTime).toLocaleDateString()} at ${new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (Provider: ${slot.providerId})`
-              ).join('\n')}
+                ${slots.map(slot => {
+                const [dateStr, timeStr] = slot.startTime.split(' ');  // Split on space
+                return `${dateStr} at ${timeStr} (Provider: ${slot.providerId})`;
+              }).join('\n')}
 
                 Please analyze these slots and return a JSON response:
                 {
@@ -278,8 +281,8 @@ export async function POST(req: Request) {
       const response: ChatResponse = {
         message: formattedResult.message,
         availableSlots: formattedResult.selectedSlots.map((slot: { date: string; time: string; providerId: string; }) => ({
-          startTime: new Date(`${slot.date}T${slot.time}:00`),
-          endTime: new Date(`${slot.date}T${slot.time}:00`),
+          startTime: `${slot.date} ${slot.time}`,
+          endTime: `${slot.date} ${slot.time}`,
           providerId: slot.providerId
         })).slice(0, 7)  // Limit to 7 slots
       };

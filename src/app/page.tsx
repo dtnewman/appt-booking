@@ -26,8 +26,8 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface AvailableSlot {
   id: string;
-  startTime: Date;
-  endTime: Date;
+  startTime: string;
+  endTime: string;
   providerId: string;
 }
 
@@ -133,9 +133,10 @@ export default function Home() {
       let assistantMessage = chatResponse.message;
       if (chatResponse.availableSlots && chatResponse.availableSlots.length > 0) {
         const slotsText = chatResponse.availableSlots
-          .map((slot: { startTime: string | number | Date; }) => {
-            const date = new Date(slot.startTime);
-            return `${date.getUTCHours().toString().padStart(2, '0')}:${date.getUTCMinutes().toString().padStart(2, '0')} ${date.toLocaleDateString([], {
+          .map((slot: { startTime: string }) => {
+            const [date, time] = slot.startTime.split(' ');
+            const [hours, minutes] = time.split(':');
+            return `${hours}:${minutes} ${new Date(date).toLocaleDateString([], {
               month: 'short',
               day: 'numeric',
               weekday: 'short'
@@ -196,10 +197,7 @@ export default function Home() {
 
     setMessages(prev => [...prev, slotInfoMessage, confirmationMessage]);
 
-    setSelectedSlot({
-      ...slot,
-      startTime: new Date(slot.startTime)
-    });
+    setSelectedSlot(slot);
     setIsBookingDialogOpen(true);
   };
 
@@ -439,26 +437,21 @@ export default function Home() {
                           showAvailableSlots && (
                             <div className="mt-4 flex flex-wrap gap-2">
                               {availableSlots.map((slot, idx) => {
-                                const slotTime = new Date(slot.startTime);
+                                const [date, time] = slot.startTime.split(' ');
+                                const [hours, minutes] = time.split(':');
+                                const slotDate = new Date(date);
                                 return (
                                   <button
                                     key={idx}
                                     onClick={() => handleSlotClick(slot)}
                                     className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
                                   >
-                                    {slotTime.getUTCHours().toString().padStart(2, '0')}:
-                                    {slotTime.getUTCMinutes().toString().padStart(2, '0')}
-                                    {' '}
-                                    {slotTime.toLocaleDateString([], {
+                                    {`${hours}:${minutes} ${slotDate.toLocaleDateString([], {
                                       month: 'short',
-                                      day: 'numeric',
-                                      timeZone: 'UTC'
-                                    })}
-                                    {' '}
-                                    ({slotTime.toLocaleDateString([], {
-                                      weekday: 'short',
-                                      timeZone: 'UTC'
-                                    })})
+                                      day: 'numeric'
+                                    })} (${slotDate.toLocaleDateString([], {
+                                      weekday: 'short'
+                                    })})`}
                                   </button>
                                 );
                               })}

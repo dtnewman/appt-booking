@@ -12,8 +12,8 @@ interface BookingDialogProps {
     onConfirm: (slotId: string, name: string, email: string, startTime: string) => Promise<void>;
     slot: {
         id: string;
-        startTime: Date;
-        endTime: Date;
+        startTime: string;
+        endTime: string;
         providerId: string;
     };
 }
@@ -36,7 +36,7 @@ export function BookingDialog({ isOpen, onClose, onConfirm, slot }: BookingDialo
                 slot.id,
                 name,
                 email,
-                slot.startTime.toISOString()
+                slot.startTime
             );
             toast.success("Appointment booked successfully!");
             onClose();
@@ -54,7 +54,7 @@ export function BookingDialog({ isOpen, onClose, onConfirm, slot }: BookingDialo
                     <DialogTitle>Confirm Booking</DialogTitle>
                     <DialogDescription>
                         Please confirm your appointment for{" "}
-                        {format(slot.startTime, "EEEE, MMMM d, yyyy 'at' h:mm a")}
+                        {format(new Date(slot.startTime), "EEEE, MMMM d, yyyy 'at' h:mm a")}
                     </DialogDescription>
                 </DialogHeader>
 
