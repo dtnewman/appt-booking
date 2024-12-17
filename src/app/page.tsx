@@ -439,26 +439,25 @@ export default function Home() {
                           showAvailableSlots && (
                             <div className="mt-4 flex flex-wrap gap-2">
                               {availableSlots.map((slot, idx) => {
-                                const localTime = new Date(slot.startTime);
+                                const slotTime = new Date(slot.startTime);
                                 return (
                                   <button
                                     key={idx}
                                     onClick={() => handleSlotClick(slot)}
                                     className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
                                   >
-                                    {localTime.toLocaleTimeString([], {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      hour12: false
-                                    })}
+                                    {slotTime.getUTCHours().toString().padStart(2, '0')}:
+                                    {slotTime.getUTCMinutes().toString().padStart(2, '0')}
                                     {' '}
-                                    {localTime.toLocaleDateString([], {
+                                    {slotTime.toLocaleDateString([], {
                                       month: 'short',
-                                      day: 'numeric'
+                                      day: 'numeric',
+                                      timeZone: 'UTC'
                                     })}
                                     {' '}
-                                    ({localTime.toLocaleDateString([], {
-                                      weekday: 'short'
+                                    ({slotTime.toLocaleDateString([], {
+                                      weekday: 'short',
+                                      timeZone: 'UTC'
                                     })})
                                   </button>
                                 );
