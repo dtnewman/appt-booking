@@ -22,6 +22,7 @@ import { type Message } from '@/lib/openai';
 import { Schedule } from "@/components/schedule";
 import { Card, CardContent } from "@/components/ui/card";
 import { BookingDialog } from "@/components/booking-dialog";
+import { BookingConfirmationDialog } from "@/components/booking-confirmation-dialog";
 
 
 
@@ -75,6 +76,17 @@ export default function Home() {
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const [agentThinking, setAgentThinking] = useState(false);
   const shouldStopAgentRef = useRef(false);
+
+  const [bookingConfirmationDetails, setBookingConfirmationDetails] = useState<{
+    name: string;
+    email: string;
+    selectedSlot: {
+      date: string;
+      time: string;
+      providerId: string;
+    };
+  } | null>(null);
+  const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false);
 
   useEffect(() => {
     if (messagesRef.current) {
@@ -142,6 +154,30 @@ export default function Home() {
 
 
   const handleSlotClick = async (slot: AvailableSlot) => {
+    const slotInfoMessage: Message = {
+      id: 'slots-' + Date.now().toString(),
+      role: 'slots',
+      content: JSON.stringify({
+        availableSlots: availableSlots,
+        selectedSlot: slot
+      })
+    };
+
+    const confirmationMessage: Message = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `You've selected the appointment on ${new Date(slot.startTime).toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}. Let's proceed with your booking.`
+    };
+
+    setMessages(prev => [...prev, slotInfoMessage, confirmationMessage]);
+
     setSelectedSlot({
       ...slot,
       startTime: new Date(slot.startTime)
@@ -278,6 +314,26 @@ export default function Home() {
 
   const testAgentButtonText = agentThinking ? "Stop Agent" : "Test Agent";
 
+  const handleBookingConfirmation = async () => {
+    if (!bookingConfirmationDetails) return;
+
+    const { name, email, selectedSlot } = bookingConfirmationDetails;
+    const startTime = new Date(`${selectedSlot.date}T${selectedSlot.time}`);
+
+    try {
+      await handleBookingConfirm(
+        selectedSlot.providerId,
+        name,
+        email,
+        startTime.toISOString()
+      );
+      setIsConfirmationDialogOpen(false);
+      setBookingConfirmationDetails(null);
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+    }
+  };
+
   return (
     <main className="flex flex-col items-center w-full max-w-6xl mx-auto py-6 px-4 gap-12">
       {/* Chat Section */}
@@ -301,6 +357,35 @@ export default function Home() {
                         <Markdown remarkPlugins={[remarkGfm]}>
                           {message.content}
                         </Markdown>
+                        {message.role === "assistant" &&
+                          index === messages.length - 1 &&
+                          availableSlots.length > 0 &&
+                          showAvailableSlots && (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {availableSlots.map((slot, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleSlotClick(slot)}
+                                  className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
+                                >
+                                  {new Date(slot.startTime).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  })}
+                                  {' '}
+                                  {new Date(slot.startTime).toLocaleDateString([], {
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                  {' '}
+                                  ({new Date(slot.startTime).toLocaleDateString([], {
+                                    weekday: 'short'
+                                  })})
+                                </button>
+                              ))}
+                            </div>
+                          )}
                       </ChatBubbleMessage>
                     </ChatBubble>
                   )
@@ -314,34 +399,6 @@ export default function Home() {
                 </ChatBubble>
               )}
             </ChatMessageList>
-
-            {/* Available Slots Section */}
-            {availableSlots.length > 0 && showAvailableSlots && (
-              <div className="py-4 border-t">
-                <h3 className="text-sm font-medium mb-2">Available Slots</h3>
-                <div className="flex flex-wrap gap-2">
-                  {availableSlots.map((slot, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleSlotClick(slot)}
-                      className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
-                    >
-                      {new Date(slot.startTime).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      })}
-                      {' '}
-                      {new Date(slot.startTime).toLocaleDateString([], {
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                      {/* {slot.id} */}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="w-full">
               <form
@@ -395,6 +452,15 @@ export default function Home() {
           onClose={() => setIsBookingDialogOpen(false)}
           onConfirm={handleBookingConfirm}
           slot={selectedSlot}
+        />
+      )}
+
+      {bookingConfirmationDetails && (
+        <BookingConfirmationDialog
+          isOpen={isConfirmationDialogOpen}
+          onClose={() => setIsConfirmationDialogOpen(false)}
+          onConfirm={handleBookingConfirmation}
+          bookingDetails={bookingConfirmationDetails}
         />
       )}
     </main>

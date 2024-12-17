@@ -61,7 +61,18 @@ const formattedResponseSchema = z.object({
     date: z.string(),      // "YYYY-MM-DD"
     time: z.string(),      // "HH:mm"
     providerId: z.string()
-  }))
+  })),
+  isBookingRequest: z.boolean().optional(),
+  bookingDetails: z.object({
+    name: z.string(),
+    email: z.string(),
+    selectedSlot: z.object({
+      date: z.string(),
+      time: z.string(),
+      providerId: z.string(),
+      slotId: z.string()
+    })
+  }).optional()
 });
 
 export async function POST(req: Request) {
