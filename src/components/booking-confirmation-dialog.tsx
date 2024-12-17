@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -23,8 +22,20 @@ export function BookingConfirmationDialog({
     onConfirm,
     bookingDetails
 }: BookingConfirmationDialogProps) {
+    console.log("bookingDetails", bookingDetails);
+
+    const formatTimeToISO = (time: string) => {
+        // Convert "01:00 PM" to "13:00" format
+        const [rawTime, period] = time.split(' ');
+        const [hours, minutes] = rawTime.split(':');
+        const hour24 = period === 'PM' ?
+            (parseInt(hours) === 12 ? 12 : parseInt(hours) + 12) :
+            (parseInt(hours) === 12 ? 0 : parseInt(hours));
+        return `${hour24.toString().padStart(2, '0')}:${minutes}`;
+    };
+
     const formattedDateTime = format(
-        new Date(`${bookingDetails.selectedSlot.date}T${bookingDetails.selectedSlot.time}`),
+        new Date(`${bookingDetails.selectedSlot.date}T${formatTimeToISO(bookingDetails.selectedSlot.time)}`),
         "EEEE, MMMM d, yyyy 'at' h:mm a"
     );
 

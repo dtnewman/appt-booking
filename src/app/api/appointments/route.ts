@@ -43,27 +43,52 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        const { slotId, clientName, clientEmail } = await request.json();
+        const { slotId, startDateTime, clientName, clientEmail } = await request.json();
 
-        // Get the slot first to verify it exists and is available
-        const slot = await prisma.slot.findUnique({
-            where: { id: slotId },
-            include: { provider: true }
-        });
+        if (startDateTime) {
+            // assert that it is a string in the format "YYYY-MM-DD HH:mm"
+            if (typeof startDateTime !== 'string' || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(startDateTime)) {
+                return NextResponse.json({ error: 'Invalid startDateTime format' }, { status: 400 });
+            }
+        }
+
+        let slot;
+
+        if (slotId) {
+            // Existing slot ID logic
+            slot = await prisma.slot.findUnique({
+                where: { id: slotId },
+                include: { provider: true }
+            });
+        } else if (startDateTime) {
+
+            // Find an available slot that matches the requested datetime
+            slot = await prisma.slot.findFirst({
+                where: {
+                    startTime: startDateTime,
+                    isAvailable: true,
+                    appointmentId: null
+                },
+                include: { provider: true }
+            });
+            console.log("slot", slot);
+        } else {
+            return NextResponse.json(
+                { error: 'Either slotId or startDateTime must be provided' },
+                { status: 400 }
+            );
+        }
+
+        console.log("1");
 
         if (!slot) {
             return NextResponse.json(
-                { error: 'Slot not found' },
+                { error: 'No available slot found for the requested time' },
                 { status: 404 }
             );
         }
 
-        if (!slot.isAvailable || slot.appointmentId) {
-            return NextResponse.json(
-                { error: 'Slot is not available' },
-                { status: 400 }
-            );
-        }
+        console.log("2");
 
         // Create the appointment and update the slot in a transaction
         const appointment = await prisma.$transaction(async (tx) => {
@@ -77,9 +102,12 @@ export async function POST(request: Request) {
                 }
             });
 
+            console.log("3");
+            console.log(slotId);
+
             // Update the slot to mark it as unavailable
             await tx.slot.update({
-                where: { id: slotId },
+                where: { id: slot.id },
                 data: {
                     isAvailable: false,
                     appointmentId: appointment.id
@@ -88,6 +116,8 @@ export async function POST(request: Request) {
 
             return appointment;
         });
+
+        console.log("3");
 
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({

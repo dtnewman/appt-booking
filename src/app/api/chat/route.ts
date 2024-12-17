@@ -62,15 +62,14 @@ const formattedResponseSchema = z.object({
     time: z.string(),      // "HH:mm"
     providerId: z.string()
   })),
-  isBookingRequest: z.boolean().optional(),
+  isBookingRequest: z.boolean(),
   bookingDetails: z.object({
     name: z.string(),
     email: z.string(),
     selectedSlot: z.object({
       date: z.string(),
       time: z.string(),
-      providerId: z.string(),
-      slotId: z.string()
+      providerId: z.string()
     })
   }).optional()
 });
@@ -185,7 +184,7 @@ export async function POST(req: Request) {
           ],
           model: 'gpt-4o',
           response_format: zodResponseFormat(alternativeSuggestionSchema, 'alternative_suggestion'),
-          temperature: 0.7,
+          temperature: 0.2,
         });
 
         const suggestion = JSON.parse(alternativeSuggestion.choices[0].message.content || '');
@@ -243,16 +242,15 @@ export async function POST(req: Request) {
         ],
         model: 'gpt-4o',
         response_format: zodResponseFormat(formattedResponseSchema, 'formatted_response'),
-        temperature: 0.7,
+        temperature: 0.2,
       });
 
       const formattedResult = JSON.parse(completion.choices[0].message.content || '');
       const response: ChatResponse = {
         message: formattedResult.message,
         availableSlots: formattedResult.selectedSlots.map((slot: { date: string; time: string; providerId: string; }) => ({
-          startTime: new Date(`${slot.date}T${slot.time}`),
-          // For now, endTime is the same as startTime. Adjust if duration is known.
-          endTime: new Date(`${slot.date}T${slot.time}`),
+          startTime: new Date(`${slot.date}T${slot.time}:00`),
+          endTime: new Date(`${slot.date}T${slot.time}:00`),
           providerId: slot.providerId
         })).slice(0, 7)  // Limit to 7 slots
       };
@@ -261,15 +259,36 @@ export async function POST(req: Request) {
       return NextResponse.json(response);
     }
 
-    // If not an availability query, just get a regular response from the model
+    // If not an availability query, check if it's a booking request with details
     const completion = await openai.chat.completions.create({
-      messages: filteredMessages,
+      messages: [
+        {
+          role: 'system',
+          content: `
+            You are a scheduling assistant. If the user provides their name and email for booking,
+            DO NOT confirm the booking. Instead, return their details in the bookingDetails field
+            and set isBookingRequest to true. The message should ask them to confirm their booking details.
+          `
+        },
+        ...filteredMessages
+      ],
       model: 'gpt-4o',
-      temperature: 0.7,
+      response_format: zodResponseFormat(formattedResponseSchema, 'formatted_response'),
+      temperature: 0.2,
     });
 
+    const response = JSON.parse(completion.choices[0].message.content || '');
+
+    // If this is a booking request with details, include them in the response
+    if (response.isBookingRequest && response.bookingDetails) {
+      return NextResponse.json({
+        message: response.message,
+        bookingDetails: response.bookingDetails
+      });
+    }
+
     return NextResponse.json({
-      message: completion.choices[0].message.content
+      message: response.message
     });
 
   } catch (error) {

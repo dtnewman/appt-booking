@@ -23,6 +23,7 @@ import { Schedule } from "@/components/schedule";
 import { Card, CardContent } from "@/components/ui/card";
 import { BookingDialog } from "@/components/booking-dialog";
 import { BookingConfirmationDialog } from "@/components/booking-confirmation-dialog";
+import { format } from "date-fns";
 
 
 
@@ -36,6 +37,15 @@ interface AvailableSlot {
 interface ChatResponse {
   message: string;
   availableSlots?: AvailableSlot[];
+  bookingDetails?: {
+    name: string;
+    email: string;
+    selectedSlot: {
+      date: string;
+      time: string;
+      providerId: string;
+    };
+  };
 }
 
 export default function Home() {
@@ -125,12 +135,36 @@ export default function Home() {
         }),
       });
 
-      const chatResponse: ChatResponse = await response.json();
+      const chatResponse = await response.json();
+
+      // Handle booking details if present
+      if (chatResponse.bookingDetails) {
+        setBookingConfirmationDetails(chatResponse.bookingDetails);
+        setIsConfirmationDialogOpen(true);
+      }
+
+      let assistantMessage = chatResponse.message;
+      if (chatResponse.availableSlots && chatResponse.availableSlots.length > 0) {
+        const slotsText = chatResponse.availableSlots
+          .map((slot: { startTime: string | number | Date; }) => {
+            return `${new Date(slot.startTime).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            })} ${new Date(slot.startTime).toLocaleDateString([], {
+              month: 'short',
+              day: 'numeric',
+              weekday: 'short'
+            })}`;
+          })
+          .join('\n');
+        assistantMessage += '\n\nAvailable slots:\n' + slotsText;
+      }
 
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant',
-        content: chatResponse.message
+        content: assistantMessage
       }]);
 
       if (chatResponse.availableSlots && chatResponse.availableSlots.length > 0) {
@@ -185,7 +219,7 @@ export default function Home() {
     setIsBookingDialogOpen(true);
   };
 
-  const handleBookingConfirm = async (slotId: string, name: string, email: string, startTime: string) => {
+  const handleBookingConfirm = async (slotId: string | null, name: string, email: string, startTime: string) => {
     const response = await fetch('/api/appointments', {
       method: 'POST',
       headers: {
@@ -195,6 +229,7 @@ export default function Home() {
         slotId: slotId,
         clientName: name,
         clientEmail: email,
+        startDateTime: startTime
       }),
     });
 
@@ -318,14 +353,21 @@ export default function Home() {
     if (!bookingConfirmationDetails) return;
 
     const { name, email, selectedSlot } = bookingConfirmationDetails;
-    const startTime = new Date(`${selectedSlot.date}T${selectedSlot.time}`);
+    console.log("selectedSlot date", selectedSlot.date);
+    console.log("selectedSlot time", selectedSlot.time);
+    const twentyFourHourTime = selectedSlot.time.replace(/(\d{2}:\d{2}) (AM|PM)/, (match, time, period) => {
+      const [hours, minutes] = time.split(':');
+      const hour24 = period === 'AM' ? hours : parseInt(hours, 10) + 12;
+      return `${hour24.toString().padStart(2, '0')}:${minutes}`;
+    });
+    const startTime = selectedSlot.date + " " + twentyFourHourTime;
 
     try {
       await handleBookingConfirm(
-        selectedSlot.providerId,
+        null,
         name,
         email,
-        startTime.toISOString()
+        startTime
       );
       setIsConfirmationDialogOpen(false);
       setBookingConfirmationDetails(null);
