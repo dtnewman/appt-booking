@@ -1,26 +1,41 @@
-# Vercel AI SDK, Next.js, OpenAI and shadcn-chat example
+# Booking Assistant
 
-This example shows how to use shadcn-chat to build a modern and fully customizable ai-powered streaming chatbot. Built at lightspeed with shadcn-chat components.
+This is a sample application for a booking assistant. It is built with Next.js, OpenAI, and shadcn.
 
 ## How to use
 
-Execute `create-next-app` with `npm`, `yarn` or `pnpm` to bootstrap this example:
+1. Clone the repository
+2. Run `npm install` to install dependencies
+3. Create a `.env` file in the root directory with the following variables (see .env.example for more details)
+```env
+DATABASE_URL=your_database_url
+OPENAI_API_KEY=your_openai_key
+RESEND_API_KEY=your_resend_key
+```
+4. Run `npm run dev` to run the development server
 
-```
-npx create-next-app --example https://github.com/jakobhoeg/shadcn-chat/tree/master/examples/shadcn-chat-example-vercel-ai nextjs-shadcn-chat-vercel-ai
+
+
+## Docker Setup
+
+You can also run this application using Docker. Here's how:
+
+### Prerequisites
+
+- Docker installed on your machine
+
+### Using Docker
+
+1. Create a `.env` file with your environment variables (see .env.example for more details)
+
+2. Build the Docker image:
+```bash
+docker build -t booking-app .
 ```
 
-```
-yarn create-next-app --example https://github.com/jakobhoeg/shadcn-chat/tree/master/examples/shadcn-chat-example-vercel-ai nextjs-shadcn-chat-vercel-ai
-```
-
-```
-pnpm create-next-app --example https://github.com/jakobhoeg/shadcn-chat/tree/master/examples/shadcn-chat-example-vercel-ai nextjs-shadcn-chat-vercel-ai
+2. Run the container:
+```bash
+docker run -p 3000:3000 booking-app
 ```
 
-Then run the example locally by following these steps:
-
-1. Go to your OpenAI dashboard and create an API key.
-2. Set the required environment variables as shown in the example env file, in a new file called `.env.local`
-3. Run `npm install` to install dependencies.
-4. Run `npm run dev` to run the devlopment server
+The application will be available at `http://localhost:3000`.
