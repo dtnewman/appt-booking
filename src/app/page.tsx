@@ -2,7 +2,6 @@
 
 import {
   ChatBubble,
-  ChatBubbleAction,
   ChatBubbleAvatar,
   ChatBubbleMessage,
 } from "@/components/ui/chat/chat-bubble";
@@ -11,8 +10,6 @@ import { ChatMessageList } from "@/components/ui/chat/chat-message-list";
 import { Button } from "@/components/ui/button";
 import {
   CornerDownLeft,
-  Mic,
-  Paperclip,
   Bot,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -487,16 +484,6 @@ export default function Home() {
                   className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
                 />
                 <div className="flex items-center p-3 pt-0">
-                  <Button variant="ghost" size="icon">
-                    <Paperclip className="size-4" />
-                    <span className="sr-only">Attach file</span>
-                  </Button>
-
-                  <Button variant="ghost" size="icon">
-                    <Mic className="size-4" />
-                    <span className="sr-only">Use Microphone</span>
-                  </Button>
-
                   <Button
                     disabled={!input || isGenerating}
                     type="submit"
