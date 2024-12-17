@@ -25,19 +25,37 @@ export function BookingConfirmationDialog({
     console.log("bookingDetails", bookingDetails);
 
     const formatTimeToISO = (time: string) => {
-        // Convert "01:00 PM" to "13:00" format
-        const [rawTime, period] = time.split(' ');
-        const [hours, minutes] = rawTime.split(':');
-        const hour24 = period === 'PM' ?
-            (parseInt(hours) === 12 ? 12 : parseInt(hours) + 12) :
-            (parseInt(hours) === 12 ? 0 : parseInt(hours));
-        return `${hour24.toString().padStart(2, '0')}:${minutes}`;
+        // Handle both "HH:mm" and "hh:mm AM/PM" formats
+        if (time.includes(' ')) {
+            // Handle "hh:mm AM/PM" format
+            const [rawTime, period] = time.split(' ');
+            const [hours, minutes] = rawTime.split(':');
+            const hour24 = period === 'PM' ?
+                (parseInt(hours) === 12 ? 12 : parseInt(hours) + 12) :
+                (parseInt(hours) === 12 ? 0 : parseInt(hours));
+            return `${hour24.toString().padStart(2, '0')}:${minutes}`;
+        } else {
+            // Already in 24-hour format
+            return time;
+        }
     };
 
-    const formattedDateTime = format(
-        new Date(`${bookingDetails.selectedSlot.date}T${formatTimeToISO(bookingDetails.selectedSlot.time)}`),
-        "EEEE, MMMM d, yyyy 'at' h:mm a"
-    );
+    const formattedDateTime = (() => {
+        try {
+            const date = bookingDetails.selectedSlot.date;
+            const time = formatTimeToISO(bookingDetails.selectedSlot.time);
+            // Ensure date is in YYYY-MM-DD format
+            const formattedDate = date.match(/^\d{4}-\d{2}-\d{2}$/)
+                ? date
+                : new Date(date).toISOString().split('T')[0];
+
+            const dateTimeString = `${formattedDate}T${time}:00`;
+            return format(new Date(dateTimeString), "EEEE, MMMM d, yyyy 'at' h:mm a");
+        } catch (error) {
+            console.error('Error formatting date:', error);
+            return 'Invalid date/time';
+        }
+    })();
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
