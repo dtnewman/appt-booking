@@ -397,14 +397,23 @@ export default function Home() {
   };
 
   return (
-    <main className="flex flex-col items-center w-full max-w-6xl mx-auto py-6 px-4 gap-12">
+    <main className="flex flex-col items-center w-full max-w-6xl mx-auto py-2 px-4 gap-4">
       {/* Add the theme toggle button */}
-      <div className="w-full flex justify-end">
+      <div className="w-full flex justify-end gap-2">
+        {showTestButton && (
+          <Button
+            onClick={handleTestAgent}
+            className={isTestComplete ? "bg-green-500 hover:bg-green-600" : ""}
+          >
+            {isTestComplete ? "Test Complete" : testAgentButtonText}
+            <Bot className="ml-2 size-4" />
+          </Button>
+        )}
         <ThemeToggle />
       </div>
 
       {/* Chat Section */}
-      <div className="w-full h-[900px] flex flex-col overflow-hidden">
+      <div className="w-full min-h-[500px] max-h-[900px] h-[90vh] flex flex-col overflow-hidden">
         <Card className="flex-1 flex flex-col overflow-hidden">
           <CardContent className="flex-1 flex flex-col p-4 overflow-hidden">
             <ChatMessageList ref={messagesRef} className="flex-1 overflow-y-auto">
@@ -429,24 +438,31 @@ export default function Home() {
                           availableSlots.length > 0 &&
                           showAvailableSlots && (
                             <div className="mt-4 flex flex-wrap gap-2">
-                              {availableSlots.map((slot, idx) => (
-                                <button
-                                  key={idx}
-                                  onClick={() => handleSlotClick(slot)}
-                                  className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
-                                >
-                                  {`${new Date(slot.startTime).getUTCHours().toString().padStart(2, '0')}:${new Date(slot.startTime).getUTCMinutes().toString().padStart(2, '0')}`}
-                                  {' '}
-                                  {new Date(slot.startTime).toLocaleDateString([], {
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                  {' '}
-                                  ({new Date(slot.startTime).toLocaleDateString([], {
-                                    weekday: 'short'
-                                  })})
-                                </button>
-                              ))}
+                              {availableSlots.map((slot, idx) => {
+                                const localTime = new Date(slot.startTime);
+                                return (
+                                  <button
+                                    key={idx}
+                                    onClick={() => handleSlotClick(slot)}
+                                    className="px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
+                                  >
+                                    {localTime.toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: false
+                                    })}
+                                    {' '}
+                                    {localTime.toLocaleDateString([], {
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                    {' '}
+                                    ({localTime.toLocaleDateString([], {
+                                      weekday: 'short'
+                                    })})
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                       </ChatBubbleMessage>
@@ -494,15 +510,6 @@ export default function Home() {
       </div>
 
       {/* Schedule Section */}
-      {showTestButton && (
-        <Button
-          onClick={handleTestAgent}
-          className={isTestComplete ? "bg-green-500 hover:bg-green-600" : ""}
-        >
-          {isTestComplete ? "Test Complete ✓" : testAgentButtonText}
-          <Bot className="ml-2 size-4" />
-        </Button>
-      )}
       <Schedule />
 
       {selectedSlot && (
