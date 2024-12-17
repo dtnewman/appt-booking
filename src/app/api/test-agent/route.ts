@@ -49,6 +49,7 @@ export async function POST(req: Request) {
         7. If no slots are available or suggested alternatives don't work, either suggest a different time or politely end the conversation (e.g., "I see there's no availability. I'll try again another time. Thank you!")
         8. IMPORTANT: You are the CUSTOMER. Never respond as if you were the booking system or receptionist.
         9. Don't ask for the same time slot more than once - if it's not available, either choose a different slot or end the conversation.
+        10. You can only ask to book time slots that are presented to you. NEVER ask for a time slot that is not presented to you.
 
         Example:
         {
