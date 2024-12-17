@@ -22,7 +22,7 @@ RESEND_API_KEY=your_resend_key
 
 ## Docker Setup
 
-You can also run this application using Docker. Here's how:
+You can also run this application using Docker (probably not necessary). Here's how:
 
 ### Prerequisites
 
