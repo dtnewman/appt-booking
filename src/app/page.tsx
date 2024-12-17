@@ -252,29 +252,16 @@ export default function Home() {
     try {
       let isConversationComplete = false;
       let currentMessages = messages;
-      let currentSlots = availableSlots;
 
       while (!isConversationComplete && !shouldStopAgentRef.current) {
         setShowAvailableSlots(false);
         setAvailableSlots([]);
-
-        const slotsList = currentSlots.map(slot => {
-          const [date, time] = slot.startTime.split(' ');
-          const [hours, minutes] = time.split(':');
-          const slotDate = new Date(date + 'T00:00:00');
-          return `${hours}:${minutes} ${slotDate.toLocaleString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric'
-          })}`;
-        });
 
         const response = await fetch('/api/test-agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             currentMessages: currentMessages,
-            slotsList: slotsList
           }),
         });
 
@@ -330,7 +317,6 @@ export default function Home() {
               .join('\n');
             assistantMessage += '\n\nAvailable slots:\n' + slotsText;
 
-            currentSlots = chatData.availableSlots;
             setAvailableSlots(chatData.availableSlots);
             setShowAvailableSlots(true);
           }

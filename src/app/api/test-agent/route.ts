@@ -22,9 +22,7 @@ const debugLog = (...args: any[]) => {
 
 export async function POST(req: Request) {
     try {
-        const { currentMessages, slotsList } = await req.json();
-
-        console.log("slotsList2", slotsList);
+        const { currentMessages } = await req.json();
 
 
         const systemPrompt = `You are SIMULATING A CUSTOMER who wants to book an appointment. You must ONLY respond as the customer - never respond as if you were the booking system or receptionist.
@@ -59,13 +57,6 @@ export async function POST(req: Request) {
             "nextAction": "ask_availability"
         }`;
 
-        if (slotsList && slotsList.length > 0) {
-            // Add available slots to the conversation context
-            currentMessages.push({
-                role: 'assistant',
-                content: `Here are the available appointment slots:\n${slotsList.join('\n')}\nDo any of these work for you?`
-            });
-        }
 
         debugLog("Current Messages:", currentMessages);
 

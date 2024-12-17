@@ -43,7 +43,10 @@ export function BookingConfirmationDialog({
     const formattedDateTime = (() => {
         try {
             const date = bookingDetails.selectedSlot.date;
+            console.log("Date", date);
             const time = formatTimeToISO(bookingDetails.selectedSlot.time);
+            console.log("Time", time);
+
             // Ensure date is in YYYY-MM-DD format
             const formattedDate = date.match(/^\d{4}-\d{2}-\d{2}$/)
                 ? date
