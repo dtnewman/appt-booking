@@ -9,7 +9,7 @@ import { toast } from "sonner";
 interface BookingDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (name: string, email: string) => Promise<void>;
+    onConfirm: (slotId: string, name: string, email: string, startTime: string) => Promise<void>;
     slot: {
         id: string;
         startTime: Date;
@@ -32,7 +32,12 @@ export function BookingDialog({ isOpen, onClose, onConfirm, slot }: BookingDialo
 
         setIsSubmitting(true);
         try {
-            await onConfirm(name, email);
+            await onConfirm(
+                slot.id,
+                name,
+                email,
+                slot.startTime.toISOString()
+            );
             toast.success("Appointment booked successfully!");
             onClose();
         } catch (error) {

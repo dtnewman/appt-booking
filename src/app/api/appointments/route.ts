@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAvailableSlots, createAppointment, GetAvailableSlotsParams } from '@/lib/scheduling';
 import { format } from 'date-fns';
 import { PrismaClient } from '@prisma/client';
+import { Resend } from 'resend';
+
 
 const prisma = new PrismaClient();
 
@@ -85,6 +87,31 @@ export async function POST(request: Request) {
             });
 
             return appointment;
+        });
+
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+            from: 'no-reply@tasknode.dev',  // just using a placeholder for an account i'm already verified with
+            to: appointment.clientEmail,
+            subject: 'Appointment Confirmation',
+            html: `
+                <h2>Your Appointment is Confirmed</h2>
+                <p>Dear ${appointment.clientName},</p>
+                <p>Your appointment has been successfully scheduled.</p>
+                
+                <h3>Appointment Details:</h3>
+                <ul>
+                    <li><strong>Date:</strong> ${new Date(appointment.startTime).toLocaleDateString()}</li>
+                    <li><strong>Time:</strong> ${new Date(appointment.startTime).toLocaleTimeString()}</li>
+                </ul>
+                
+                <p>If you need to make any changes to your appointment, please contact us.</p>
+                
+                <p>Thank you for choosing our services!</p>
+                
+                <p>Best regards,<br>
+                Drillbit</p>
+            `,
         });
 
         return NextResponse.json(appointment);

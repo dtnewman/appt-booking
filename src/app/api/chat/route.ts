@@ -9,6 +9,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// Add this helper function
+const debugLog = (...args: any[]) => {
+  if (process.env.DEBUG_BACKEND?.toLowerCase() === 'true') {
+    console.log(...args);
+  }
+};
+
 // Interfaces
 interface AvailabilityParams {
   startDate?: string;
@@ -118,7 +125,7 @@ export async function POST(req: Request) {
       temperature: 0
     });
 
-    console.log("Availability Check:", availabilityCheck.choices[0].message.content);
+    debugLog("Availability Check:", availabilityCheck.choices[0].message.content);
 
     const analysis = JSON.parse(availabilityCheck.choices[0].message.content || '');
 
@@ -132,7 +139,7 @@ export async function POST(req: Request) {
         endTime: analysis.params.endTime || undefined
       };
 
-      console.log("Params:", params);
+      debugLog("Params:", params);
 
       const slots = (await getAvailableSlots(params)).slice(0, 20);
 
@@ -185,7 +192,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ message: suggestion.message });
       }
 
-      console.log("Slots (LLM Input):", slots);
+      debugLog("Slots (LLM Input):", slots);
 
       // Format the available slots using the LLM
       const completion = await openai.chat.completions.create({
@@ -239,7 +246,7 @@ export async function POST(req: Request) {
         })).slice(0, 7)  // Limit to 7 slots
       };
 
-      console.log("Response:", response);
+      debugLog("Response:", response);
       return NextResponse.json(response);
     }
 

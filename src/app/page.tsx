@@ -10,20 +10,17 @@ import { ChatInput } from "@/components/ui/chat/chat-input";
 import { ChatMessageList } from "@/components/ui/chat/chat-message-list";
 import { Button } from "@/components/ui/button";
 import {
-  CopyIcon,
   CornerDownLeft,
   Mic,
   Paperclip,
-  RefreshCcw,
-  Volume2,
+  Bot,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import CodeDisplayBlock from "@/components/code-display-block";
-import { openai, type Message } from '@/lib/openai';
+import { type Message } from '@/lib/openai';
 import { Schedule } from "@/components/schedule";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { BookingDialog } from "@/components/booking-dialog";
 
 
@@ -75,6 +72,9 @@ export default function Home() {
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
+  const [isAgentActive, setIsAgentActive] = useState(false);
+  const [agentThinking, setAgentThinking] = useState(false);
+  const shouldStopAgentRef = useRef(false);
 
   useEffect(() => {
     if (messagesRef.current) {
@@ -142,20 +142,21 @@ export default function Home() {
 
 
   const handleSlotClick = async (slot: AvailableSlot) => {
-    setSelectedSlot(slot);
+    setSelectedSlot({
+      ...slot,
+      startTime: new Date(slot.startTime)
+    });
     setIsBookingDialogOpen(true);
   };
 
-  const handleBookingConfirm = async (name: string, email: string) => {
-    if (!selectedSlot) return;
-
+  const handleBookingConfirm = async (slotId: string, name: string, email: string, startTime: string) => {
     const response = await fetch('/api/appointments', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        slotId: selectedSlot.id,
+        slotId: slotId,
         clientName: name,
         clientEmail: email,
       }),
@@ -169,7 +170,7 @@ export default function Home() {
     const confirmationMessage: Message = {
       id: Date.now().toString(),
       role: 'assistant',
-      content: `Great! I've confirmed your appointment for ${new Date(selectedSlot.startTime).toLocaleString('en-US', {
+      content: `Great! I've confirmed your appointment for ${new Date(startTime).toLocaleString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -185,6 +186,79 @@ export default function Home() {
     setSelectedSlot(null);
     setIsBookingDialogOpen(false);
   };
+
+  const handleTestAgent = async () => {
+    if (agentThinking) {
+      shouldStopAgentRef.current = true;
+      return;
+    }
+
+    shouldStopAgentRef.current = false;
+    setAgentThinking(true);
+
+    try {
+      let isConversationComplete = false;
+
+      while (!isConversationComplete && !shouldStopAgentRef.current) {
+        const response = await fetch('/api/test-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentMessages: messages
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.message) {
+          const agentMessage: Message = {
+            id: Date.now().toString(),
+            role: 'user',
+            content: data.message
+          };
+
+          setMessages(prev => [...prev, agentMessage]);
+
+          // Get the chat response
+          const chatResponse = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messages: messages.concat(agentMessage).map(({ role, content }) => ({
+                role,
+                content,
+              })),
+            }),
+          });
+
+          const chatData = await chatResponse.json();
+
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: chatData.message
+          }]);
+
+          if (chatData.availableSlots && chatData.availableSlots.length > 0) {
+            setAvailableSlots(chatData.availableSlots);
+          }
+
+          isConversationComplete = data.isConversationComplete;
+
+          if (!shouldStopAgentRef.current) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error with test agent:', error);
+    } finally {
+      setAgentThinking(false);
+      shouldStopAgentRef.current = false;
+    }
+  };
+
+  const testAgentButtonText = agentThinking ? "Stop Agent" : "Test Agent";
 
   return (
     <main className="flex flex-col items-center w-full max-w-6xl mx-auto py-6 px-4 gap-12">
@@ -244,7 +318,7 @@ export default function Home() {
                         month: 'short',
                         day: 'numeric'
                       })}
-                      {slot.id}
+                      {/* {slot.id} */}
                     </button>
                   ))}
                 </div>
@@ -292,6 +366,9 @@ export default function Home() {
       </div>
 
       {/* Schedule Section */}
+      <Button onClick={handleTestAgent}>
+        {testAgentButtonText}
+      </Button>
       <Schedule />
 
       {selectedSlot && (
